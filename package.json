@@ -1,0 +1,13 @@
+{
+  "name": "atlas-prompt-enhancer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Model-aware prompt enhancement workbench",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check js/main.js && node --check js/engine.js && node --check js/data.js && node --check api/enhance.js && node --check api/config.js && npm test",
+    "dev": "vercel dev",
+    "start": "npx serve ."
+  }
+}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#F3F3EE" />
+  <meta name="description" content="ATLAS — a precise prompt workbench for six AI environments." />
+  <title>ATLAS — Prompt workbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="ATLAS home"><span class="brand-emblem" aria-hidden="true"><span></span></span><strong>ATLAS<span class="brand-period">.</span></strong></a>
+    <div class="topbar-right"><span class="topbar-edition">PROMPT WORKBENCH <span class="topbar-sep">/</span> EDITION 01</span><button type="button" class="topbar-link" id="history-link">History <span id="history-count">0</span></button><button type="button" class="account-button" id="account-button">Sign in <span aria-hidden="true">↗</span></button></div>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="intro-title">
+      <div class="intro-aside"><span class="overline">AN INSTRUCTION STUDIO</span><span class="edition-mark">01 <span aria-hidden="true">/</span> 06</span></div>
+      <div class="intro-copy"><h1 id="intro-title">Better prompts.<br><em>Less guesswork.</em></h1><div class="intro-bottom"><p>Turn a rough idea into a useful instruction for the AI you actually use. No invented requirements. No padding.</p><div class="intro-stamp" aria-hidden="true"><span>THINK</span><span>THEN</span><span>WRITE</span></div></div></div>
+    </section>
+
+    <section class="workbench" id="workbench" aria-label="Prompt workbench">
+      <div class="workspace-top"><div class="section-marker"><span class="section-index">A</span><span>WORKSPACE</span></div><span class="workspace-state" id="connection-status"><span class="status-dot"></span> Local drafting available</span></div>
+      <div class="workspace-grid">
+        <section class="compose-panel" aria-labelledby="compose-heading">
+          <header class="panel-head"><div><span class="micro">01 — THE INPUT</span><h2 id="compose-heading">Start with an idea.</h2></div><span class="panel-glyph" aria-hidden="true">↘</span></header>
+          <div class="control-block"><label for="model-select">Target AI</label><div class="select-wrap"><select id="model-select"><option value="freebuff">FreeBuff</option><option value="chatgpt" selected>ChatGPT</option><option value="kilo">Kilo AI</option><option value="codex">Codex</option><option value="mimo">MiMo 2.6 Flash</option><option value="deepseek">DeepSeek</option></select></div><p class="field-help" id="target-note">General assistant. Specify the output clearly.</p></div>
+          <div class="control-block"><div class="label-row"><label for="style-select">Visual direction</label><span class="optional">OPTIONAL</span></div><div class="select-wrap"><select id="style-select"><option value="none">Let the task decide</option></select></div><p class="field-help" id="style-note">No preset style added.</p></div>
+          <div class="control-block detail-control"><label for="detail-select">Level of detail</label><div class="detail-group" id="detail-group" role="group" aria-label="Enhancement detail"><button class="detail-option" data-depth="compact" type="button">Concise</button><button class="detail-option selected" data-depth="standard" type="button" aria-pressed="true">Balanced</button><button class="detail-option" data-depth="thorough" type="button">Detailed</button></div></div>
+          <div class="control-block input-block"><div class="label-row"><label for="original-prompt">Your rough prompt</label><button type="button" class="text-control" id="example-button">Try example</button></div><textarea id="original-prompt" maxlength="12000" spellcheck="true" placeholder="Describe what you want to build, fix, write or understand…"></textarea><div class="textarea-foot"><span>Specific outcomes beat long instructions.</span><span id="input-count">0 / 12,000</span></div></div>
+          <div class="compose-actions"><button class="primary-button" type="button" id="enhance-button"><span>Enhance prompt</span><span aria-hidden="true">↗</span></button><div class="action-footnote"><span class="action-line"></span><span>AI rewrite when configured. Structured draft otherwise.</span></div></div>
+        </section>
+        <section class="result-panel" aria-labelledby="result-heading">
+          <header class="panel-head"><div><span class="micro">02 — THE OUTPUT</span><h2 id="result-heading">Built to be used.</h2></div><span class="result-status" id="result-mode">AWAITING INPUT</span></header>
+          <div class="result-toolbar"><span id="result-caption">Select a model and enter your prompt.</span><span class="word-count" id="word-count">0 WORDS</span></div>
+          <div class="output-frame"><div id="output-empty" class="empty-content"><div class="empty-art" aria-hidden="true"><span class="art-outer"></span><span class="art-inner"></span><span class="art-cross">+</span></div><p>Your finished prompt will<br><em>take shape here.</em></p><small>One clear job. The right constraints.<br>A result you can actually use.</small></div><textarea id="enhanced-prompt" aria-label="Enhanced prompt" class="result-textarea" spellcheck="false" readonly hidden></textarea></div>
+          <div class="output-actions"><button type="button" class="result-action" id="copy-button" disabled>Copy prompt <span aria-hidden="true">⧉</span></button><button type="button" class="result-action" id="save-button" disabled>Save to history <span aria-hidden="true">↗</span></button><button type="button" class="result-action secondary" id="draft-button" disabled>Generate local draft</button></div>
+          <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+          <div class="quality-note"><span class="quality-mark">*</span><p>ATLAS preserves your request, then adds structure only where it improves execution. Model-specific templates are guidance, not measured performance guarantees.</p></div>
+        </section>
+      </div>
+    </section>
+    <section class="below" aria-label="Product information"><div><span class="micro">WHY IT WORKS</span><h2>Precision is <em>a design decision.</em></h2></div><p>One interface, six target environments, twenty-two original design directions. Practical controls for output, context and constraints—without turning every request into a wall of instructions.</p><button id="research-button" class="research-button" type="button">Read the research notes <span aria-hidden="true">↗</span></button></section>
+  </main>
+  <footer class="footer"><span>ATLAS <span aria-hidden="true">/</span> PROMPT INTELLIGENCE</span><span>DESIGNED FOR CLARITY, NOT THEATER.</span><span>© 2026</span></footer>
+</div>
+
+<dialog id="auth-dialog" class="modal"><form method="dialog" class="modal-head"><div><span class="micro">YOUR LIBRARY</span><h2>Save what works.</h2></div><button class="close-dialog" aria-label="Close sign-in" value="cancel">×</button></form><p>Sign in with your email to sync prompts and preferences securely. A Supabase project must be configured by the site owner.</p><form id="auth-form"><label for="email-input">Email address</label><input id="email-input" type="email" required placeholder="you@example.com" autocomplete="email"/><button class="primary-button" type="submit">Send magic link <span>↗</span></button></form><button id="sign-out" type="button" class="plain-action" hidden>Sign out</button><p class="modal-feedback" id="auth-feedback" role="status"></p></dialog>
+<dialog id="history-dialog" class="modal history-modal"><form method="dialog" class="modal-head"><div><span class="micro">YOUR ARCHIVE</span><h2>Recent prompts.</h2></div><button class="close-dialog" aria-label="Close history" value="cancel">×</button></form><p id="history-explainer">Saved prompts appear here after signing in.</p><div id="history-list" class="history-list" aria-live="polite"></div><button id="history-refresh" class="plain-action" type="button">Refresh history</button></dialog>
+<dialog id="research-dialog" class="modal research-modal"><form method="dialog" class="modal-head"><div><span class="micro">DESIGN &amp; METHODS</span><h2>Research notes.</h2></div><button class="close-dialog" aria-label="Close research" value="cancel">×</button></form><div class="research-content"><h3>What we used</h3><p>The prompt strategy follows role, context, constraints and output formatting research, plus model/agent documentation. Styles are original briefs informed by a visual design taxonomy. No claim of a benchmarked ideal model prompt length is made.</p><ul><li><a href="https://www.askglitch.com/guides/system-prompt-examples" target="_blank" rel="noopener">AskGlitch — system prompt structures</a></li><li><a href="https://www.achref.dev/resources/style-prompts" target="_blank" rel="noopener">Achref — 22 design directions</a></li><li><a href="https://www.achref.dev/keywords.pdf" target="_blank" rel="noopener">Achref — visual design keywords</a></li><li><a href="https://github.com/vercel-labs/skills" target="_blank" rel="noopener">Vercel Labs — find-skills</a></li><li><a href="https://github.com/DietrichGebert/ponytail" target="_blank" rel="noopener">Ponytail — restraint and simplicity</a></li><li><a href="https://kilo.ai/docs/customize/agents-md" target="_blank" rel="noopener">Kilo — AGENTS.md</a></li><li><a href="https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide" target="_blank" rel="noopener">Codex — repository guidance</a></li><li><a href="https://api-docs.deepseek.com/updates/" target="_blank" rel="noopener">DeepSeek — model updates</a></li></ul><h3>How ATLAS operates</h3><p>The local composer builds a transparent, deterministic prompt. Signed-in users can optionally use a server-side AI rewrite when a provider key is configured; the selected target remains the destination for the resulting prompt, not necessarily the model doing the rewriting.</p></div></dialog>
+</body>
+</html>
