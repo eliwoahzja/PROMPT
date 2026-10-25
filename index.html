@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#F6F1E4" />
-  <meta name="description" content="ATLAS rewrites a rough prompt into the structure each AI tool documents, then checks that nothing you wrote was lost." />
+  <meta name="description" content="ATLAS builds evidence-informed prompts for coding agents and specific AI models, then checks that requested details are retained." />
   <title>ATLAS: prompts built for the tool you use</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,9 +24,19 @@
   </header>
 
   <main>
+    <nav class="workspace-tabs" aria-label="Workspace">
+      <button id="tab-compose" class="workspace-tab" type="button" aria-current="page">Prompt enhancer</button>
+      <button id="tab-audit" class="workspace-tab" type="button">Slop rater</button>
+    </nav>
+
+    <aside class="context-strip" aria-labelledby="context-title">
+      <div class="context-info"><h2 id="context-title">Project context</h2><p>Attach <code>context.md</code> once. Both workspaces will use it to write project-specific instructions.</p></div>
+      <div class="context-controls"><label class="btn btn-small" for="context-upload">Choose .md<input type="file" id="context-upload" accept=".md,text/markdown,text/plain" hidden /></label><button class="link" id="context-clear" type="button" hidden>Remove</button><p id="context-status" class="help" role="status">Not attached · max 512 KB</p></div>
+    </aside>
+
     <section class="hero" aria-labelledby="hero-title">
       <h1 id="hero-title">Write the prompt your tool <mark>actually follows.</mark></h1>
-      <p class="hero-sub">Pick the AI you use. Paste a rough idea. ATLAS rebuilds it in the structure that tool&rsquo;s own docs recommend, then checks that nothing you wrote was lost.</p>
+      <p class="hero-sub">Choose your coding tool or the exact model you use. ATLAS turns your rough idea into a clear, checkable brief without inventing model-specific rules.</p>
     </section>
 
     <section class="workbench" id="workbench" aria-label="Prompt workbench">
@@ -35,7 +45,7 @@
 
         <fieldset class="field" id="model-group">
           <legend>Tool or model</legend>
-          <div class="targets" id="targets"></div>
+          <div class="select-wrap"><select id="target-select" aria-describedby="target-note"></select></div>
           <p class="help" id="target-note" aria-live="polite"></p>
         </fieldset>
 
@@ -101,6 +111,36 @@
           <p class="small" id="sources-date"></p>
         </details>
       </section>
+    </section>
+
+    <section class="audit-workspace" id="audit-workspace" aria-label="Project design audit" hidden>
+      <header class="audit-intro"><h1>Audit the interface.<br />Fix the evidence.</h1><p>Analyze a complete project ZIP locally, identify traceable UI design risks, and generate a specific repair brief. No source files leave your browser unless you explicitly request AI critique.</p></header>
+      <div class="audit-grid">
+        <form class="panel audit-input" id="audit-form" onsubmit="return false">
+          <h2 class="panel-title">Project to review</h2>
+          <div class="field">
+            <label for="project-zip">Application archive <span class="opt">ZIP · up to 100 MB</span></label>
+            <div class="file-drop" id="zip-drop"><strong>Choose a project ZIP</strong><span>or drop it here. Read locally; nothing is executed.</span><input type="file" id="project-zip" accept=".zip,application/zip,application/x-zip-compressed" /></div>
+            <p id="zip-file-status" class="help">No archive selected.</p>
+          </div>
+          <div class="field"><label for="audit-screenshot">Screenshot of the running app <span class="opt">optional · PNG / JPEG / WebP, 2.5 MB max</span></label><input id="audit-screenshot" type="file" accept="image/png,image/jpeg,image/webp" /><p class="help">Used only for the optional, consent-based AI visual critique. A ZIP alone cannot prove what the app looks like.</p><img id="audit-preview" class="audit-preview" alt="Selected app screenshot for visual review" hidden /></div>
+          <div class="field"><label for="audit-ai-used">AI used to build it <span class="opt">optional</span></label><div class="select-wrap"><select id="audit-ai-used"><option value="unknown">Not specified / unknown</option></select></div><p class="help">Used as context only. It never changes a score or establishes authorship.</p></div>
+          <button class="btn btn-primary" id="audit-run" type="button">Inspect project</button>
+          <p id="audit-status" role="status" class="feedback">Ready to inspect a ZIP without uploading it.</p>
+          <div class="audit-note"><strong>Scope of the rating</strong><p>Static source-code evidence only. A screenshot or device preview is required to judge actual aesthetics. No archive is executed or extracted to a server.</p></div>
+        </form>
+        <section class="panel audit-output" aria-labelledby="audit-title"><div class="panel-head"><h2 class="panel-title" id="audit-title">Review report</h2><span class="tag" id="audit-state">Awaiting ZIP</span></div>
+          <div class="audit-empty" id="audit-empty">A score without inspected evidence is decoration. Add a real project archive to begin.</div>
+          <div id="audit-results" hidden>
+            <div class="score-line"><div><span class="score-number" id="audit-score">—</span><span class="score-unit">/ 100</span></div><div><strong>Source-pattern risk</strong><p id="audit-confidence" class="small"></p></div></div>
+            <div class="audit-summary" id="audit-summary"></div><p id="audit-visual-rating" class="help">Visual rating: not assessed. Add a screenshot and request optional AI critique.</p>
+            <div class="audit-sections"><h3>Evidence by category</h3><div id="audit-breakdown"></div></div>
+            <div class="audit-sections"><h3>Findings and corrections</h3><div id="audit-findings"></div></div>
+            <div class="audit-sections"><h3>Needs visual verification</h3><ul id="audit-limits"></ul></div>
+            <div class="audit-sections"><div class="label-row"><h3>Full repair prompt</h3><span class="help">Uses the selected target model + context.md</span></div><textarea id="audit-prompt" readonly spellcheck="false" aria-label="Detailed design repair prompt"></textarea><div class="actions"><button type="button" class="btn" id="audit-copy">Copy repair prompt</button><button type="button" class="btn" id="audit-download">Download full report</button><button type="button" class="btn" id="audit-save">Save to history</button><button type="button" class="btn" id="audit-ai-review">AI critique (optional)</button></div><p class="help" id="audit-privacy">AI critique sends only summarized findings and the context excerpt with your confirmation. The original ZIP stays on your device. Saved repair prompts may contain quoted source lines.</p></div>
+          </div>
+        </section>
+      </div>
     </section>
 
     <section class="method" aria-labelledby="method-title">

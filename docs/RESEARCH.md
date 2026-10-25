@@ -44,3 +44,6 @@ From Professor Glitch's five patterns (read in full): who it is, what it never d
 ## Z.ai model and skill follow-up (2026-10-25)
 
 See `docs/ZAI_RESEARCH.md` for model identity, capabilities, source links, prompt template rationale, and what remains unverified. The user-supplied AI Toolfinder URL could not be resolved using available retrieval methods. Its contents and licensing are **unverified**, so it has not been copied, installed or executed.
+
+## Verified model-specific choices (October 26, 2026)
+See [NEW_MODELS_2026_10_26.md](NEW_MODELS_2026_10_26.md) for GPT-6 Astra, GPT-6 (ChatGPT), GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna and DeepSeek V4.1 Flash 10/17. API/model distinctions are deliberate.

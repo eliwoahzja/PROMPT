@@ -4,7 +4,7 @@
 //   'docs'     = the vendor publishes product docs, but no dedicated prompting guide
 //   'none'     = no vendor guidance found; the template uses general agent practice only
 // Source checks were last run on CHECKED_ON. Re-check before relying on them after that date.
-export const CHECKED_ON = '2026-10-25';
+export const CHECKED_ON = '2026-10-26';
 
 export const targets = [
   { id:'freebuff', label:'FreeBuff', tag:'Terminal coding agent', kind:'agent', layout:'plain',
@@ -128,6 +128,94 @@ export const targets = [
       'Do not claim to have run code, opened files or searched the web unless you actually did.'
     ],
     format:'Give the final deliverable in the requested format. Keep any explanation short.' }
+,
+  // These are destinations for generated prompts, NOT models called by the
+  // ATLAS rewriting endpoint. apiId documents an official provider identifier
+  // where there is one. GPT-6 in ChatGPT has no documented standalone API ID.
+  { id:'gpt6-chat', label:'GPT-6 (ChatGPT)', tag:'ChatGPT · Intelligent UI', kind:'model', layout:'xml',
+    evidence:'official', apiId:null,
+    evidenceNote:'OpenAI introduced GPT-6 to ChatGPT on October 7, 2026, including Intelligent UI responses. The ChatGPT-facing GPT-6 name is not documented as a standalone Responses API model ID. XML sections here are an ATLAS organizational choice, not a GPT-6 requirement.',
+    note:'For GPT-6 in ChatGPT: request the direct answer and specify the desired format when it matters. Interactive visuals are optional and should serve the task, not be forced.',
+    sources:[
+      {label:'OpenAI: GPT-6 and Intelligent UI (Oct 7, 2026)',url:'https://openai.com/index/gpt-6-for-everyone/'},
+      {label:'OpenAI: Using GPT-6 family',url:'https://developers.openai.com/api/docs/guides/latest-model'}],
+    how:[
+      'Prioritize the requested result and its required format; do not pad the reply with process narration.',
+      'Use structured explanations, tables or interactive elements only when they make the task easier; do not force visual UI for a text-only request.',
+      'Respect every supplied constraint and mark uncertain or unavailable facts rather than fabricating details.'
+    ],
+    format:'Deliver the answer or artifact directly. Include any qualification needed for accuracy, without unnecessary introductory text.' },
+
+  { id:'gpt6-astra', label:'GPT-6 Astra', tag:'OpenAI · gpt-6-astra', kind:'model', layout:'plain',
+    evidence:'official', apiId:'gpt-6-astra',
+    evidenceNote:'OpenAI documents gpt-6-astra as its flagship for deep reasoning, coding, research and multi-step tool workflows. API reasoning effort is low/medium/high/xhigh/max (not none). The concise task/constraints/evidence framing is an ATLAS editorial choice, not a mandatory syntax.',
+    note:'Best for multi-stage research or engineering. State the objective, the evidence to inspect, boundaries, and a verifiable deliverable. Higher reasoning effort is configured outside the prompt.',
+    sources:[
+      {label:'OpenAI: GPT-6 Astra API model',url:'https://developers.openai.com/api/docs/models/gpt-6-astra'},
+      {label:'OpenAI: Using GPT-6',url:'https://developers.openai.com/api/docs/guides/latest-model'}],
+    how:[
+      'Understand the end result first. For complex tasks inspect provided evidence and relevant sources before making technical claims.',
+      'Plan only as much as the task requires, execute available steps, then verify the outcome against the stated acceptance criteria.',
+      'Use tools only if available and appropriate; distinguish completed actions, unverified assumptions and blockers without inventing results.'
+    ],
+    format:'Present the completed result first, followed by material evidence, verification and limitations only where necessary.' },
+
+  { id:'gpt6-1-sol', label:'GPT-6.1 Sol', tag:'OpenAI · gpt-6.1-sol', kind:'model', layout:'plain',
+    evidence:'official', apiId:'gpt-6.1-sol',
+    evidenceNote:'OpenAI identifies GPT-6.1 Sol as the newer Sol version for complex coding and professional work at lower cost than Astra. API reasoning effort supports low/medium(default)/high/xhigh/max; none is unsupported. Tool calling uses Responses API. No exclusive markdown or XML syntax is required.',
+    note:'Balanced multi-step work: define deliverable, constraints, available context, and verification. Do not confuse reasoning-effort API settings with prompt text.',
+    sources:[
+      {label:'OpenAI: GPT-6.1 Sol API model',url:'https://developers.openai.com/api/docs/models/gpt-6.1-sol'},
+      {label:'OpenAI: GPT-6 family guidance',url:'https://developers.openai.com/api/docs/guides/latest-model'}],
+    how:[
+      'Translate the request into a concrete deliverable and preserve named constraints and files.',
+      'When editing code, inspect the existing implementation, make a focused change and run the relevant checks when tools exist.',
+      'Avoid verbose work logs and unsupported success claims; report only material verification findings.'
+    ],
+    format:'Return the requested output first; for engineering tasks include changed paths, verified checks and unresolved blockers.' },
+
+  { id:'gpt6-sol', label:'GPT-6 Sol', tag:'OpenAI · gpt-6-sol', kind:'model', layout:'plain',
+    evidence:'official', apiId:'gpt-6-sol',
+    evidenceNote:'OpenAI lists GPT-6 Sol as the earlier Sol model for complex coding and agentic workflows. GPT-6.1 Sol is newer. GPT-6 Sol allows reasoning.effort none/low/medium(default)/high/xhigh/max; its tool support differs by endpoint and reasoning mode.',
+    note:'Focused agentic work: state the files, expected behavior, boundaries and regression tests. Use the newer 6.1 Sol target when that is the model actually selected.',
+    sources:[
+      {label:'OpenAI: GPT-6 Sol API model',url:'https://developers.openai.com/api/docs/models/gpt-6-sol'},
+      {label:'OpenAI: GPT-6.1 Sol update',url:'https://developers.openai.com/api/docs/models/gpt-6.1-sol'}],
+    how:[
+      'Inspect the relevant repository rules and source before changing code, if those files are accessible.',
+      'Implement the specific requested change while preserving unrelated behavior.',
+      'Run narrow, reproducible checks where available and describe any untested functionality accurately.'
+    ],
+    format:'Show the deliverable or patch, affected paths, concrete validation results, and any unfinished work.' },
+
+  { id:'gpt6-luna', label:'GPT-6 Luna', tag:'OpenAI · gpt-6-luna', kind:'model', layout:'numbered',
+    evidence:'official', apiId:'gpt-6-luna',
+    evidenceNote:'OpenAI documents gpt-6-luna as the efficient GPT-6-family model for focused or repeatable tasks. API reasoning effort includes none as well as low/medium/high/xhigh/max. Numbered instructions are chosen for clarity, not an officially required syntax.',
+    note:'Specify a narrowly scoped task, exact inputs, must-keep details and output format. Prefer short, unambiguous steps to oversized instructions.',
+    sources:[
+      {label:'OpenAI: GPT-6 Luna model catalogue',url:'https://developers.openai.com/api/docs/models'},
+      {label:'OpenAI: Using GPT-6 family',url:'https://developers.openai.com/api/docs/guides/latest-model'}],
+    how:[
+      'Perform the single stated task without adding adjacent features or unrelated analysis.',
+      'Preserve all exact names, numbers, formats and user exclusions.',
+      'Return the requested output directly and flag any essential unknown in one sentence.'
+    ],
+    format:'Return the completed result in the requested shape. Keep explanations brief unless explicitly requested.' },
+
+  { id:'deepseek-v4-1-flash-1017', label:'DeepSeek V4.1 Flash (10/17)', tag:'DeepSeek · deepseek-flash', kind:'model', layout:'numbered',
+    evidence:'docs', apiId:'deepseek-flash',
+    evidenceNote:'DeepSeek announced DeepSeek-V4.1-Flash-1017 on October 17, 2026. The public API alias remains deepseek-flash (not deepseek-v4.1-flash-1017). Docs list 1M context, vision, tool calling, JSON output, and thinking/non-thinking modes; the API config sets thinking mode. No special numbered prompt syntax was verified.',
+    note:'Target the October 17 Flash revision through deepseek-flash. Keep instructions explicit, bounded, and output-oriented. Do not put a fake version ID in API calls.',
+    sources:[
+      {label:'DeepSeek official change log: 2026-10-17 update',url:'https://api-docs.deepseek.com/updates/'},
+      {label:'DeepSeek API: current models and alias',url:'https://api-docs.deepseek.com/quick_start/pricing/'}],
+    how:[
+      'Identify the exact task, relevant input context, exclusions and required final artifact.',
+      'Use provided information as evidence and do not invent facts, files, tool access or test results.',
+      'For coding tasks, inspect and verify where tools permit; otherwise clearly mark the steps that remain untested.'
+    ],
+    format:'Produce the final deliverable without prefatory filler. For implementation work include actual checks and blocked verification.' }
+
 ];
 
 // Structure of every style brief follows the same order a designer would brief in:

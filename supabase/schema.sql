@@ -7,7 +7,7 @@ create table if not exists public.prompts (
   title text not null check (char_length(title) between 1 and 100),
   raw_prompt text not null check (char_length(raw_prompt) between 1 and 12000),
   enhanced_prompt text not null check (char_length(enhanced_prompt) between 1 and 40000),
-  target text not null check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai')),
+  target text not null check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai','gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017')),
   style text not null,
   depth text not null check (depth in ('compact','standard','thorough')),
   method text not null check (method in ('AI','DRAFT')),
@@ -68,8 +68,8 @@ $$;
 revoke all on function public.consume_enhancement_quota() from public, anon;
 grant execute on function public.consume_enhancement_quota() to authenticated;
 
--- For a pre-existing ATLAS database that lacks the Z.ai target, run the migration in supabase/migrations/20261025_add_zai_target.sql.
+-- For a pre-existing ATLAS database, use the latest cumulative model-target migration: supabase/migrations/20261026_add_specific_models.sql.
 -- Earlier migration example (reference only): Run this once:
 -- alter table public.prompts drop constraint if exists prompts_target_check;
 -- alter table public.prompts add constraint prompts_target_check
---   check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai'));
+--   check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai','gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017'));

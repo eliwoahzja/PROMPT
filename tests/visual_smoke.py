@@ -17,10 +17,13 @@ with sync_playwright() as p:
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.route('**/*', lambda r: r.continue_() if r.request.url.startswith(base) else r.abort())
         page.goto(base)
-        page.wait_for_selector('#targets .target')
-        assert page.locator('#targets input').count() == 9, 'expected 9 targets'
-        labels = page.locator('#targets strong').all_inner_texts()
-        assert 'Cursor' in labels and 'Lovable' in labels and 'Codex' in labels and 'Z.ai / GLM-5.3-Flash' in labels, labels
+        page.wait_for_selector('#target-select option')
+        assert page.locator('#target-select option').count() == 15, 'expected 15 destinations'
+        labels = page.locator('#target-select option').all_inner_texts()
+        for wanted in ['Cursor','Lovable','Codex','Z.ai / GLM-5.3-Flash','GPT-6 Astra','GPT-6.1 Sol','GPT-6 Sol','GPT-6 Luna','GPT-6 (ChatGPT)','DeepSeek V4.1 Flash (10/17)']:
+            assert wanted in labels, wanted
+        page.locator('#target-select').select_option('gpt6-astra')
+        assert 'gpt-6-astra' in page.locator('#target-note').inner_text()
         page.locator('#example-button').click()
         page.locator('#detail-group [data-depth=thorough]').click()
         page.locator('#enhance-button').click()
@@ -31,7 +34,7 @@ with sync_playwright() as p:
         assert fails == 0 and passes >= 5, (fails, passes)
         m = page.evaluate('() => ({scroll: document.documentElement.scrollWidth, inner: innerWidth})')
         assert m['scroll'] <= w + 1, f'horizontal overflow at {w}: {m}'
-        small = page.evaluate('''() => [...document.querySelectorAll("button,select,.target,.seg,input[type=email]")]
+        small = page.evaluate('''() => [...document.querySelectorAll("button,select,.seg,input[type=email]")]
             .filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()).filter(r => r.height < 43).length''')
         assert small == 0, f'{small} controls under 44px at {w}'
         assert not errors, errors

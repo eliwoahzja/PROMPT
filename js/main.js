@@ -1,25 +1,63 @@
+import {mountAudit} from './audit-ui.js';
+import {readWorkContext} from './work-context.js';
 import {buildResult,allPassed,metrics,targets,styles,CHECKED_ON} from './engine.js';
 import {researchSources,skillNotes} from './data.js';
 
 const $ = id => document.getElementById(id);
-const styleSelect=$('style-select'), detail=$('detail-group'), original=$('original-prompt'), hallmarkToggle=$('hallmark-review');
+const styleSelect=$('style-select'), targetSelect=$('target-select'), detail=$('detail-group'), original=$('original-prompt'), hallmarkToggle=$('hallmark-review');
 const result=$('enhanced-prompt'), resultStatus=$('result-mode'), resultCaption=$('result-caption'), empty=$('output-empty');
 const EVIDENCE={official:'Official guide',docs:'Vendor docs only',none:'No official guide'};
 let level='standard', supabase=null, session=null, currentMode='', busy=false, target='chatgpt';
 let configuration={databaseConfigured:false,aiConfigured:false};
+let workContext=null;
 
 function el(tag,props={},...kids){const n=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==='class')n.className=v;else if(k==='text')n.textContent=v;else n.setAttribute(k,v);}n.append(...kids);return n;}
 const modelById=id=>targets.find(t=>t.id===id);
 const message=(text,kind='info')=>{const f=$('feedback');f.textContent=text;f.dataset.kind=kind;};
 const authMessage=text=>{$('auth-feedback').textContent=text;};
 
+/* One Markdown attachment informs both workspaces; raw files remain local. */
+const currentContext=()=>workContext?.text||'';
+$('context-upload').addEventListener('change',async()=>{
+  try{
+    const file=$('context-upload').files?.[0];if(!file)return;
+    workContext=await readWorkContext(file);
+    $('context-status').textContent=workContext.name+' · '+(workContext.truncated?'first 10,500 characters included':'fully included');
+    $('context-clear').hidden=false;
+    window.dispatchEvent(new Event('atlas-context-change'));
+    message('Work context attached. Next enhancement will use it. Review for sensitive credentials before sharing your prompt.');
+  }catch(error){$('context-status').textContent=error.message;$('context-upload').value='';workContext=null;$('context-clear').hidden=true;window.dispatchEvent(new Event('atlas-context-change'));}
+});
+$('context-clear').addEventListener('click',()=>{workContext=null;$('context-upload').value='';$('context-status').textContent='Not attached · max 512 KB';$('context-clear').hidden=true;window.dispatchEvent(new Event('atlas-context-change'));});
+const toggleWorkspace=audit=>{
+  document.querySelector('.hero').hidden=audit;
+  $('workbench').hidden=audit;
+  document.querySelector('.method').hidden=audit;
+  $('audit-workspace').hidden=!audit;
+  $('tab-compose').setAttribute('aria-current',audit?'false':'page');
+  $('tab-audit').setAttribute('aria-current',audit?'page':'false');
+};
+$('tab-compose').addEventListener('click',()=>toggleWorkspace(false));
+$('tab-audit').addEventListener('click',()=>toggleWorkspace(true));
+
+
 /* ---- build controls ---- */
-const targetBox=$('targets');
-for(const t of targets){
-  const input=el('input',{type:'radio',name:'target',value:t.id});
-  if(t.id===target)input.checked=true;
-  targetBox.append(el('label',{class:'target'},input,el('strong',{text:t.label}),el('span',{text:t.tag})));
+const sections=[
+  {label:'Platforms & coding agents',ids:['freebuff','chatgpt','kilo','codex','cursor','lovable']},
+  {label:'OpenAI models',ids:['gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna']},
+  {label:'Other AI models',ids:['mimo','zai','deepseek','deepseek-v4-1-flash-1017']}
+];
+for(const section of sections){
+  const group=el('optgroup',{label:section.label});
+  for(const id of section.ids){
+    const t=targets.find(x=>x.id===id);
+    if(!t)throw new Error('Missing target profile: '+id);
+    group.append(el('option',{value:t.id,text:t.label}));
+  }
+  targetSelect.append(group);
 }
+if(targetSelect.querySelectorAll('option').length!==targets.length)throw new Error('A target is missing from the selector.');
+targetSelect.value=target;
 for(const s of styles.filter(x=>x.id!=='none')) styleSelect.append(el('option',{value:s.id,text:s.name}));
 $('checked-on').textContent=CHECKED_ON;
 
@@ -69,7 +107,7 @@ function display(text,method,checks,notes){
 }
 function draft(){
   try{
-    const r=buildResult({raw:original.value,target,style:styleSelect.value,depth:level,hallmark:hallmarkToggle.checked});
+    const r=buildResult({raw:original.value,target,style:styleSelect.value,depth:level,hallmark:hallmarkToggle.checked,context:currentContext()});
     display(r.prompt,'DRAFT',r.checks,r.warnings);
     message(allPassed(r.checks)?'Draft ready. All checks passed.':'Draft ready, but a check failed. Read the receipt before you copy.',allPassed(r.checks)?'info':'error');
     return r;
@@ -77,14 +115,14 @@ function draft(){
 }
 
 /* ---- events ---- */
-targetBox.addEventListener('change',e=>{if(e.target.name==='target'){target=e.target.value;renderTargetNote();persistSettings();}});
+targetSelect.addEventListener('change',()=>{target=targetSelect.value;renderTargetNote();persistSettings();window.dispatchEvent(new Event('atlas-target-change'));});
 styleSelect.addEventListener('change',()=>{renderStyleNote();persistSettings();});
 hallmarkToggle.addEventListener('change',()=>{persistSettings();});
 detail.addEventListener('click',e=>{const b=e.target.closest('[data-depth]');if(!b)return;setDepth(b.dataset.depth);persistSettings();});
 original.addEventListener('input',updateInput);
 $('example-button').addEventListener('click',()=>{
   original.value='Build a booking page for my dog-grooming shop. Customers pick a service and a time slot. Use React and Supabase. Make it modern and mobile friendly.';
-  target='lovable';targetBox.querySelector('input[value="lovable"]').checked=true;styleSelect.value='neobrutalism';
+  target='lovable';targetSelect.value=target;styleSelect.value='neobrutalism';
   renderTargetNote();renderStyleNote();updateInput();original.focus();
 });
 $('draft-button').addEventListener('click',draft);
@@ -95,9 +133,10 @@ $('enhance-button').addEventListener('click',async()=>{
     $('engine-note').textContent=configuration.aiConfigured&&configuration.databaseConfigured?'Sign in to add an AI rewrite on top of this draft.':'AI rewrite is off until Supabase and an AI key are set in Vercel. The structured draft above is complete.';
     return;
   }
+  if(workContext && !confirm('The attached context.md excerpt will be included in the AI rewrite request. Review it for private data before continuing. Send it now?'))return;
   busy=true;const btn=$('enhance-button');btn.disabled=true;btn.firstElementChild.textContent='Enhancing\u2026';message('Requesting an AI rewrite\u2026');
   try{
-    const response=await fetch('/api/enhance',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({raw:original.value,target,style:styleSelect.value,depth:level,hallmark:hallmarkToggle.checked}),signal:AbortSignal.timeout(45000)});
+    const response=await fetch('/api/enhance',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({raw:original.value,target,style:styleSelect.value,depth:level,hallmark:hallmarkToggle.checked,context:currentContext()}),signal:AbortSignal.timeout(45000)});
     let data={};try{data=await response.json();}catch{}
     if(!response.ok)throw new Error(data.error||'The rewrite service is unavailable. Your local draft is still here.');
     if(typeof data.prompt!=='string'||!data.prompt.trim())throw new Error('The rewrite service returned an empty result.');
@@ -151,7 +190,7 @@ async function refreshHistoryCount(){
 }
 function openRecord(r){
   original.value=r.raw_prompt;
-  if(modelById(r.target)){target=r.target;targetBox.querySelector('input[value="'+r.target+'"]').checked=true;}
+  if(modelById(r.target)){target=r.target;targetSelect.value=target;}
   if(styles.some(s=>s.id===r.style))styleSelect.value=r.style;hallmarkToggle.checked=r.hallmark!==false;
   setDepth(r.depth);updateInput();renderTargetNote();renderStyleNote();
   let notes=[],checks=null;
@@ -176,7 +215,7 @@ async function loadHistory(){
 async function loadSettings(){
   if(!session||!supabase)return;
   const {data}=await supabase.from('user_settings').select('preferred_target,preferred_style,preferred_depth,preferred_hallmark').maybeSingle();if(!data)return;
-  if(modelById(data.preferred_target)){target=data.preferred_target;targetBox.querySelector('input[value="'+target+'"]').checked=true;}
+  if(modelById(data.preferred_target)){target=data.preferred_target;targetSelect.value=target;}
   if(styles.some(s=>s.id===data.preferred_style))styleSelect.value=data.preferred_style;
   setDepth(data.preferred_depth);hallmarkToggle.checked=data.preferred_hallmark!==false;renderTargetNote();renderStyleNote();
 }
@@ -193,4 +232,14 @@ async function initialize(){
   }catch{message('Account sync is unavailable. Local drafting still works.','error');}
 }
 
-renderTargetNote();renderStyleNote();setDepth('standard');updateInput();initialize();
+renderTargetNote();renderStyleNote();setDepth('standard');updateInput();
+mountAudit({getContext:currentContext,getTarget:()=>modelById(target),getSession:()=>session,targets,getConfiguration:()=>configuration,
+  saveAuditPrompt:async({name,repair})=>{
+    if(!session||!supabase){$('auth-dialog').showModal();authMessage('Sign in before saving a repair prompt.');throw new Error('Sign-in required.');}
+    if(repair.length>40000)throw new Error('Repair prompt exceeds the 40,000-character history limit. Download the Markdown instead.');
+    const {error}=await supabase.from('prompts').insert({user_id:session.user.id,title:('UI audit — '+name).slice(0,90),raw_prompt:('Review and repair the UI of '+name).slice(0,12000),enhanced_prompt:repair,target,style:'none',depth:'thorough',method:'DRAFT',hallmark:true});
+    if(error)throw new Error('Unable to save to Supabase. Check the database configuration.');
+    await refreshHistoryCount();
+  }
+});
+initialize();

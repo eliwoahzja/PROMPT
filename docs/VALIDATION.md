@@ -20,3 +20,6 @@ Date: 2026-10-25
 ## Quality caveat
 
 Passing a structural prompt check does not prove that a downstream model produces a one-shot successful answer. External model behavior has not been benchmarked. All vendor-specific guidance is distinguished from general readability choices.
+
+## v5 model-specific additions
+The v4 counts above describe v4, not v5. v5 covers 15 targets × 23 styles × 3 depths = 1,035 deterministic combinations. Test outcomes are in `qa/VALIDATION_v5.md`.

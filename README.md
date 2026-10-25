@@ -1,6 +1,6 @@
 # ATLAS — Prompt Enhancer
 
-An HTML-first editorial prompt workbench: nine destinations (FreeBuff, ChatGPT, Kilo AI, Codex, Cursor, Lovable, MiMo 2.6 Flash, DeepSeek, Z.ai / GLM-5.3-Flash), 22 structured design briefs, an optional Hallmark-informed design-review mode and a receipt of real checks on every prompt, optional AI rewriting that is re-checked server-side, and Supabase Auth/History/Settings.
+An HTML-first editorial prompt workbench: 15 destinations (FreeBuff, ChatGPT, Kilo AI, Codex, Cursor, Lovable, MiMo 2.6 Flash, DeepSeek, Z.ai / GLM-5.3-Flash, GPT-6 (ChatGPT), GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, DeepSeek V4.1 Flash (10/17)), 22 structured design briefs, an optional Hallmark-informed design-review mode and a receipt of real checks on every prompt, optional AI rewriting that is re-checked server-side, and Supabase Auth/History/Settings.
 
 ## Hallmark-informed design review (v4)
 - For website/app design prompts, the **Independent design review** control adds a source-grounded checklist based on verified [Hallmark v2](https://github.com/Nutlope/hallmark) principles. It is on by default and can be switched off.
@@ -9,7 +9,7 @@ An HTML-first editorial prompt workbench: nine destinations (FreeBuff, ChatGPT, 
 - See `docs/HALLMARK_INTEGRATION.md` for verified sources, exact behavior and caveats.
 
 ## What works out of the box
-- Open `index.html` with a local static HTTP server (for example `python -m http.server 8080` then `http://localhost:8080`) to use **local drafting**, the receipt, copy, style picker and all nine templates.
+- Open `index.html` with a local static HTTP server (for example `python -m http.server 8080` then `http://localhost:8080`) to use **local drafting**, the receipt, copy, style picker and all 15 templates.
 - Open `docs/RESEARCH.md`, `docs/EXAMPLES.md` for the research basis and examples.
 - Run `npm test` (Node >=18) for the template test suite.
 
@@ -49,13 +49,13 @@ An HTML-first editorial prompt workbench: nine destinations (FreeBuff, ChatGPT, 
 - Source inputs are sent to the configured AI provider only after signed-in users activate AI enhancement.
 - The browser only sees Supabase public keys. The OpenAI key is kept server-side. RLS isolates saved prompt records.
 - The receipt proves what a prompt contains (your words kept, structure, style named). It cannot prove how a model will respond; do not present prompts as guaranteed one-shot successes.
-- For an existing Supabase database, run `supabase/migrations/20261025_add_zai_target.sql` to permit saving Z.ai prompts. New installs only need `supabase/schema.sql`.
+- For an existing Supabase database, run `supabase/migrations/20261026_add_specific_models.sql` to permit saving all 15 destinations, including Z.ai. New installs only need `supabase/schema.sql`.
 
 ## Project layout
 ```
 index.html                HTML interface
 styles.css                Neo-brutalist design system
-js/data.js                Nine targets (with sources + evidence level), 22 style briefs, vague-phrase sharpeners
+js/data.js                15 targets (with sources + evidence level), 22 style briefs, vague-phrase sharpeners
 js/engine.js              Deterministic prompt generation + verifyPrompt() checks
 js/main.js                Controls, account, history, copy, persistence
 api/config.js             Public non-secret runtime config
@@ -74,3 +74,49 @@ tests/engine.test.js    Source-level regression tests
 - The user provided the complete AI Toolfinder guide; we verified Hallmark at its official repository and adapted its design-review principles in v4 without installing or copying the external skill.
 
 Screenshots in `docs/screens/` show the previous ATLAS v2 layout as design references; the v3 browser smoke test could not run in this environment.
+
+## Model-specific profiles added October 26, 2026 (v5)
+ATLAS now distinguishes **coding platforms** from **OpenAI models** and **other model providers** through one compact grouped dropdown. The profile changes the *generated prompt*, **not** the OpenAI model powering the optional semantic rewriter. API reasoning effort, tool permissions, and provider version are configured outside prompt text.
+
+- **GPT-6 (ChatGPT)**: ChatGPT-facing model without a separately verified standalone `gpt-6` API ID. Intelligent UI is a ChatGPT product capability and is not forced by the prompt.
+- **GPT-6 Astra**: documented `gpt-6-astra` API model. Complex reasoning and tool-supported work.
+- **GPT-6.1 Sol**: documented `gpt-6.1-sol`; newer Sol. Reasoning `none` is *not* supported.
+- **GPT-6 Sol**: documented `gpt-6-sol`; earlier Sol. Reasoning `none` is supported.
+- **GPT-6 Luna**: documented `gpt-6-luna`; efficient, narrow tasks.
+- **DeepSeek V4.1 Flash 10/17**: revision `DeepSeek-V4.1-Flash-1017`; **API alias is still `deepseek-flash`**, not a new date-based model ID.
+
+Read `docs/NEW_MODELS_2026_10_26.md` for official source links, research/evidence boundaries and concise prompting profiles. On existing Supabase instances, run `supabase/migrations/20261026_add_specific_models.sql` before saving v5-specific targets.
+
+### Testing boundaries
+`npm test` exercises the local drafts and mocked authenticated rewrite route for all new targets. It does not perform real model inference or check permissions for the recipient's ChatGPT, Codex or API account. Live Vercel and Supabase integration should be tested after deploying.
+
+## v6 — 100 MB Slop Rater + project context
+
+This release adds a second **Slop Rater** workspace while preserving all 15 target models, 22 original design styles, existing prompt enhancement, Hallmark checks, magic-link login, and Supabase-backed history.
+
+### ZIP source audit (works without login or AI API)
+1. Select **Slop Rater**.
+2. Attach a **standard `.zip` app/project archive of at most 100 MiB (104,857,600 bytes)**. Drag/drop is also supported.
+3. Optionally state which AI was used. Default **Unknown** has no effect on the score; ATLAS never claims to identify authorship.
+4. Press **Inspect project**. ATLAS reads the ZIP directory and a bounded sample of relevant UI code on the **client device**. It does **not** execute code, write extracted files to disk, or upload the full archive anywhere.
+5. See the source-pattern risk score, category breakdown, file/line-based findings, recommended fixes, missing verification evidence, and a generated **detailed repair prompt**. Copy it, download a complete Markdown report with the prompt, or sign in and save the prompt into existing history.
+
+**Scope:** This is a deterministic, heuristic **source-pattern rating** (higher number = more flagged patterns), **not an objective measure of visual quality, proof of AI authorship, runtime testing, or a review of every source file**. ZIP entries are listed, then at most **200 small UI code files / 6 MiB of uncompressed source text** are sampled for evidence. Max **18,000 entries**. ZIP64, multi-disk and encrypted ZIPs are not supported. Large binary files, vendor dependencies, `.env` and likely secrets are not scanned. Unsupported compressed sources are skipped, and confidence is labeled limited when necessary. `DecompressionStream('deflate-raw')` support is needed for typical compressed ZIPs. The interface identifies unverified issues instead of silently treating missing evidence as a pass.
+
+### Optional screenshot-based visual review
+
+You may attach **one screenshot of the running app** (PNG/JPEG/WebP, max **2.5 MiB**) in the Slop Rater. To request a subjective visual analysis and second opinion, sign in, configure the existing AI backend, and explicitly confirm sending **the screenshot + small source finding summaries + context excerpt** to your configured AI provider. The project ZIP itself is never transmitted. The AI's visual rating is shown **separately** from the deterministic code-pattern score and is not presented as an objective measurement. A model unable to accept image input may return an error; the local report remains intact.
+
+This architecture avoids Vercel's 4.5 MB serverless body limit for the 100 MB project ZIP and avoids needing 100 MB uploads to Supabase Storage (whose Free tier has a 50 MB per-object maximum). It also avoids untrusted archive extraction on Vercel.
+
+### `context.md` shared work context
+
+Attach an optional Markdown file through **Project context**, above the workspace tabs. The file can be up to **512 KiB**, but at most **10,500 characters** are included in generated prompts; an overflow indicator tells you if it was shortened. Both the normal enhancer and the Slop Rater repair prompt incorporate those facts and project constraints. The local file is not stored automatically. Generated prompts can include content excerpts, so **remove passwords, keys, private customer data or confidential source information before attaching**. Sign-in/history saves **the generated prompt**, not the original Markdown file. An authenticated AI rewrite asks permission before sending its attached context excerpt. The Slop Rater AI critique also asks for consent.
+
+### Deployment
+
+**No new Supabase SQL migration is required for v6.** Existing `prompts` RLS and the per-user quota RPC already support saved repair briefs and optional AI reviews. Fresh installs should use `supabase/schema.sql`. Existing v5 installs should keep their prior schema and migrations. Deploy the updated project to your linked GitHub/Vercel repository, retaining the same environment variables in `.env.example`. The 100 MB ZIP is processed locally, so there is no server upload size setting to increase. Server API requests and signed-in AI features require the existing environment configuration.
+
+### Verification
+
+Run `npm run check` to validate JavaScript syntax and unit tests. See `qa/VALIDATION_v6.md` for performed tests and limitations. The recorded screenshots from `docs/screens/` are **static HTML/CSS layout previews**, not a real authenticated runtime/browser end-to-end test. The live Supabase/AI integration needs to be verified after deployment.

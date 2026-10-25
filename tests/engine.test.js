@@ -4,8 +4,9 @@ import {buildResult,buildPrompt,verifyPrompt,extractTokens,allPassed,styles,targ
 
 const DEPTHS=['compact','standard','thorough'];
 
-test('nine targets including Z.ai GLM-5.3-Flash, Cursor and Lovable, 22 styles plus none',()=>{
-  assert.deepEqual(targets.map(t=>t.id),['freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','zai','deepseek']);
+test('15 targets including six verified model-specific additions and 22 styles plus none',()=>{
+  assert.deepEqual(targets.map(t=>t.id),['freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','zai','deepseek','gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017']);
+  assert.equal(targets.length,15);
   assert.equal(styles.length,23);
   assert.ok(targets.find(t=>t.id==='zai').sources.some(x=>x.url.includes('docs.z.ai')));
   assert.equal(new Set(styles.map(s=>s.id)).size,23);
@@ -117,4 +118,35 @@ test('Hallmark AI rewrite receipt rejects outputs that strip the review and keep
   assert.equal(good.find(x=>x.id==='hallmark').pass,true);
   const writing=verifyPrompt('Write a thank-you email','Write a thank-you email.',{mode:'AI',hallmark:true});
   assert.equal(writing.some(x=>x.id==='hallmark'),false);
+});
+
+
+test('specific GPT-6 family destinations preserve distinct API identifiers and documented reasoning limits',()=>{
+  const lookup=id=>targets.find(t=>t.id===id);
+  assert.equal(lookup('gpt6-astra').apiId,'gpt-6-astra');
+  assert.equal(lookup('gpt6-1-sol').apiId,'gpt-6.1-sol');
+  assert.equal(lookup('gpt6-sol').apiId,'gpt-6-sol');
+  assert.equal(lookup('gpt6-luna').apiId,'gpt-6-luna');
+  assert.equal(lookup('gpt6-chat').apiId,null);
+  assert.match(lookup('gpt6-1-sol').evidenceNote,/none is unsupported/i);
+  assert.match(lookup('gpt6-sol').evidenceNote,/none\/low/);
+  assert.match(lookup('gpt6-chat').evidenceNote,/not documented as a standalone/i);
+});
+test('DeepSeek 10/17 revision is documented as the deepseek-flash API alias, not a new fake ID',()=>{
+  const model=targets.find(x=>x.id==='deepseek-v4-1-flash-1017');
+  assert.equal(model.apiId,'deepseek-flash');
+  assert.ok(model.sources.some(x=>x.url.includes('api-docs.deepseek.com/updates')));
+  const result=buildResult({raw:'Refactor UI in index.html',target:model.id,depth:'thorough'});
+  assert.ok(allPassed(result.checks));
+  assert.match(result.prompt,/Inspect|provided|source|code/i);
+});
+test('each new target is saved as a distinct selection and not an execution model',()=>{
+  for(const id of ['gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017']){
+    const model=targets.find(t=>t.id===id);
+    assert.ok(model);
+    const out=buildResult({raw:'Explain async await with a code example',target:id});
+    assert.ok(out.prompt.includes('Explain async await with a code example'));
+    assert.ok(allPassed(out.checks));
+    assert.ok(model.evidenceNote.length>40);
+  }
 });

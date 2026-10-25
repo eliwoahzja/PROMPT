@@ -1,3 +1,4 @@
+import {contextBrief} from './work-context.js';
 import {targets, styles, aiGuardrails, hallmarkReview, sharpeners, CHECKED_ON} from './data.js';
 
 export const MAX_INPUT = 12000;
@@ -52,7 +53,7 @@ function styleBlock(style, depth) {
 }
 
 /** Build the prompt plus everything the UI needs to show about it. */
-export function buildResult({raw, target='chatgpt', style='none', depth='standard', hallmark=false}) {
+export function buildResult({raw, target='chatgpt', style='none', depth='standard', hallmark=false, context=''}) {
   const task = String(raw||'').trim();
   if (!task) throw new Error('Enter a prompt first.');
   if (task.length > MAX_INPUT) throw new Error('Your prompt exceeds 12,000 characters.');
@@ -69,6 +70,7 @@ export function buildResult({raw, target='chatgpt', style='none', depth='standar
   const S = []; // {key,title,body}
 
   S.push({key:'request',title:'Request (verbatim)',body:task});
+  if(context) S.push({key:'workcontext',title:'Work context',body:contextBrief(context)});
   if (tokens.length) S.push({key:'keep',title:'Keep exactly as written',body:tokens.join(', ')});
   if (sharpened.length) S.push({key:'specifics',title:'Vague phrases made specific',body:bullets(sharpened.map(s=>'\u201c'+s.from+'\u201d \u2192 '+s.to))});
 
@@ -115,7 +117,7 @@ export function buildResult({raw, target='chatgpt', style='none', depth='standar
   const words = task.split(/\s+/).filter(Boolean).length;
   if (words < 8) warnings.push('Your request is only '+words+' words. The prompt can add structure, but only you can add the audience, the outcome and the limits.');
 
-  const checks = verifyPrompt(task, prompt, {target, style, depth, mode:'draft', hallmark});
+  const checks = verifyPrompt(task, prompt, {target, style, depth, mode:'draft', hallmark, context});
   return {prompt, checks, tokens, sharpened, warnings, isDesign, isCoding, hallmarkApplied:hallmark && isDesign};
 }
 
@@ -127,7 +129,7 @@ export function buildPrompt(opts) { return buildResult(opts).prompt; }
  * mode 'draft': the local composer (verbatim request included).
  * mode 'AI': a model rewrote it, so required strings are checked individually.
  */
-export function verifyPrompt(raw, out, {target='chatgpt', style='none', depth='standard', mode='draft', hallmark=false} = {}) {
+export function verifyPrompt(raw, out, {target='chatgpt', style='none', depth='standard', mode='draft', hallmark=false, context=''} = {}) {
   const task = String(raw||'').trim();
   const text = String(out||'');
   const model = targets.find(x=>x.id===target);
@@ -142,6 +144,11 @@ export function verifyPrompt(raw, out, {target='chatgpt', style='none', depth='s
       : model.layout==='numbered' ? /(^|\n)1\. /.test(text)
       : /(^|\n)REQUEST \(VERBATIM\)\n/.test(text);
     checks.push({id:'layout',label:'Structure matches the '+model.label+' template',pass:ok});
+  }
+  if(context){
+    const anchors=extractTokens(context).slice(0,12);
+    const present=text.includes('WORK CONTEXT') && anchors.every(t=>text.toLowerCase().includes(t.toLowerCase()));
+    checks.push({id:'context',label:'Attached work context and exact anchors are preserved',pass:present,detail:present?'':'Rewrite omitted supplied project context.'});
   }
   if (chosen && chosen.id !== 'none') checks.push({id:'style',label:'Style \u201c'+chosen.name+'\u201d is named in the prompt',pass:text.includes(chosen.name)});
   if (hallmark && (chosen?.id !== 'none' || uiPattern.test(task))) {

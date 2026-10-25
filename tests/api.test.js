@@ -22,7 +22,7 @@ test('rejects invalid target before network calls',async()=>{init();const res=aw
 test('accepts Cursor, Lovable and Z.ai as targets',async()=>{
   init();const original=globalThis.fetch;
   globalThis.fetch=mockFetch('Use Supabase on the booking page.');
-  try{for(const target of ['cursor','lovable','zai']){const res=await POST(req({raw:'Add a booking page using Supabase',target}));assert.equal(res.status,200);}}
+  try{for(const target of ['cursor','lovable','zai','gpt6-astra','gpt6-chat','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017']){const res=await POST(req({raw:'Add a booking page using Supabase',target}));assert.equal(res.status,200);}}
   finally{globalThis.fetch=original;restore();}
 });
 test('a rewrite that keeps everything is returned as AI',async()=>{
