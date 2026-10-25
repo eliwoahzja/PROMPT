@@ -1,51 +1,46 @@
-# ATLAS — Research and evidence notes
+## Hallmark v2 update (25 October 2026)
 
-Reviewed: 2026-10-25. Sources are linked inline. This is a product design memo, not a benchmark.
+The user supplied the AI Toolfinder guide in full. We verified `Nutlope/hallmark` v2 at the official GitHub SKILL.md, along with its quality gates and redesign rules. See `docs/HALLMARK_INTEGRATION.md`. ATLAS adapts the inspection and anti-template principles into original prompt instructions; the skill is not installed or executed in the web app.
 
-## 1. Prompt design principles
+# Research notes
 
-[AskGlitch](https://www.askglitch.com/guides/system-prompt-examples) explains the difference between system-level instructions and user messages through recurring practical concepts: role, hard constraints, tools, output expectations and when to seek clarification. We derive our own plain-language task template from these ideas; no source prompt is copied.
+Sources were opened and read on **2026-10-25**. Vendors change docs often; re-check before relying on any template after that date.
 
-**Common source-independent core:** objective; context the model actually has; constraints (including preservation); actionable steps where useful; output format; evidence/truthfulness requirements. Avoid mandatory plans for trivial requests, fake assurance, and demands for hidden reasoning.
+## How each tool template was built
 
-**Length:** There is no verified universal optimum prompt length across these six choices. ATLAS offers concise / balanced / detailed user settings rather than claiming a magic token count.
-
-## 2. Target-specific configurations
-
-| Target | Category | Recommended structure | Verified and limitations |
+| Tool | Evidence | What the template uses | Source |
 |---|---|---|---|
-| FreeBuff | Coding agent, environment may vary | State repo, file access, the change, restrictions, concrete tests and deliverable | [Official FreeBuff product](https://freebuff.com/) demonstrates coding agent execution; exact priority of system/user instruction is unverified for the user-selected FreeBuff model. |
-| ChatGPT | Application using selectable OpenAI models | Clear objective, context, critical constraints, expected result | [OpenAI prompt practices](https://platform.openai.com/docs/guides/prompt-engineering) differ across models; exact ideal length unverified. |
-| Kilo AI | Coding-agent platform; provider/model selectable | Repository scope, AGENTS.md, allowed edits, verification | [Kilo AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom models](https://kilo.ai/docs/code-with-ai/agents/custom-models). Underlying model varies; no universal Kilo syntax. |
-| Codex | Repository coding agent | One focused implementation request + repo instructions, narrow tests, evidence report | [OpenAI Codex prompting guide](https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide), [skills instruction optimization](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra). Avoid redundant boilerplate. |
-| MiMo 2.6 Flash | Model family | Explicit task, numbered conditions, specified deliverable; avoid phantom tool claims | The official [MiMo model release notes](https://mimo.mi.com/docs/en-US/updates/model) identify API model `mimo-v2.6-flash`; preferred XML syntax and ideal prompt length remain **unverified**. |
-| DeepSeek | Model family/API; Flash and Pro are distinct | Task + input + constraints + output; don't conflate thinking API mode and prompt wording | [Official DeepSeek updates](https://api-docs.deepseek.com/updates/) document `deepseek-flash` and reasoning mode; exact ideal prompt length and XML superiority **unverified**. |
+| ChatGPT | Official guide | Sectioned (XML-tag) prompt, explicit length and scope limits, simplest valid reading when ambiguous, no conflicting instructions | OpenAI GPT-5.2 Prompting Guide (Dec 2025) |
+| Codex | Official guide | "Less is more": minimal prompt, only essential guidance, a way to verify | OpenAI GPT-5-Codex Prompting Guide (Sep 2025) |
+| Cursor | Official guide | Plan first for multi-file work, let the agent search for context, verifiable goals (tests, types, linters), focused rules | Cursor blog "Best practices for coding with agents" (Jan 2026); Cursor docs: Rules |
+| Lovable | Official docs | One feature/component per prompt, name page and behavior, say what must not change, state stack explicitly, ask when scope is unclear | Lovable docs: Prompting; Best practices |
+| Kilo AI | Official docs | Be specific, plan then execute then review, concise standing instructions, AGENTS.md; "Fix everything" is the documented bad prompt | Kilo docs: Prompt engineering; Using agents and modes |
+| FreeBuff | **No official prompting guide found** | Built on Codebuff's multi-agent flow (file picker, planner, editor, reviewer), so the template names files, order and a checkable finish | FreeBuff README |
+| MiMo 2.6 Flash | Vendor docs only | Numbered requirements, exact deliverable (general practice, not a MiMo finding). Deep thinking is an API setting, on by default | MiMo docs: Deep thinking; MiMo-V2-Flash model card |
+| DeepSeek | Vendor docs only | Plain task, limits, format. Current API models are V4 Flash and V4 Pro with thinking on by default | DeepSeek API docs: Thinking mode; Chat completions |
+| Z.ai / GLM-5.3-Flash | Official model/UI-coding guidance | Numbered acceptance criteria are an ATLAS readability choice, not a vendor-imposed syntax. Source inspection and render/compare/revise loops follow Z.ai’s published examples. Thinking required; reasoning effort is an API setting | Official GLM-5.3-Flash guide; Deep Thinking; Release notes |
 
-Where the agent platform matters more than the base model, ATLAS prioritizes the *workflow*: inspect evidence, work in source when available, preserve behavior, verify and report.
+### Things found that change common advice
+- **DeepSeek R1-era tips are out of date.** Guides that say "no system prompt, no few-shot examples" were written for R1. A source reviewed for this project reports `deepseek-reasoner` was retired on 2026-07-24 and V4 replaced it. DeepSeek's own API docs list only V4 Flash and V4 Pro. ATLAS does not apply R1 rules.
+- **MiMo-V2.6-Flash**: thinking is on by default and, while it is on, custom `temperature`/`top_p` are not honored (per Xiaomi's docs). Third-party reports say some agent frameworks mishandle `reasoning_content` in multi-turn tool use; that is a report, not a vendor statement.
+- **Codex** guidance is to keep prompts short, so ATLAS warns when you combine Codex with Detailed.
+- **Kilo**: the dedicated Orchestrator agent is documented as deprecated; the template does not tell you to use it.
 
-## 3. Skills / practices selected
+## How to write a good prompt (what the engine encodes)
+From Professor Glitch's five patterns (read in full): who it is, what it never does, how to use tools/check, how to format, when to stop and ask. ATLAS maps these to Scope, Never, Verify, Output and "If something is missing". From Anthropic's prompting docs: be clear and direct, separate instructions from context, use tags for complex prompts. From OpenAI's GPT-5.2 guide: state limits on length and scope, avoid contradictions.
 
-The [Vercel Labs skills CLI](https://github.com/vercel-labs/skills) offers `npx skills find <query>` and `npx skills use <source>@<skill>`; it is a skill discovery/invocation utility, **not** a JavaScript prompt rewrite API. Our application uses the documented concepts; it does not pretend that its browser executes Vercel skills.
+## What makes a UI look AI-made (what the design rules encode)
+- Measured: a 500-page Show HN audit found the same tells repeatedly: uppercase hero badge above the H1, cards with a coloured top-border stripe, icon-topped feature-card grids, gradient backgrounds with glass cards.
+- Cataloged by designers/tools: purple-to-blue gradient hero, gradient-clipped headline text, Inter everywhere, 3-column feature grid, mixed icon sets, coloured left-border cards, glow blobs, fake logos and statistics.
+- Why it matters: models fill every decision you did not make with the most common answer, so the fix is naming decisions (style, type, one accent, one radius, one primary action), not adding adjectives.
+- Source for the 22 styles and the brief order (idea, layout, type, colour, surfaces, images, motion, phone, never, check): achref.dev/resources/style-prompts. Source for "name it, do not describe it": achref.dev/keywords.pdf (40 keywords). ATLAS uses the style names and the brief order; **all wording is original**.
+- The APEX design skill's rules (plan block before code, one memorable move, 37 slop gates) are compiled into the Design section.
 
-- **find-skills** (Vercel Labs CLI workflow): relevant to discovering new skills; studied as a discovery workflow, not executed as a CLI in this environment or embedded into runtime.
-- **web-design-guidelines** ([Vercel Labs](https://github.com/vercel-labs/web-interface-guidelines)): clear component states, keyboard support, error copy and interaction quality; informs ATLAS interface and generated UI acceptance criteria.
-- **frontend-design** ([reference](https://github.com/vercel-labs/agent-eval/blob/main/packages/playground/.agents/skills/frontend-design/SKILL.md)): deliberate creative direction, cohesive typography and context-specific composition; informs generated design briefs.
-- **ponytail** ([DietrichGebert](https://github.com/DietrichGebert/ponytail)): minimal complete diff and YAGNI; informs restraint and review instructions.
+## Not verified
+- **find-skills (Vercel Labs)** is a tool for discovering agent skills and runs in a coding agent. It cannot run inside this web page, so ATLAS does not call it. It was not run for this release.
+- Prompt quality was **not benchmarked** against live models. Templates follow vendor guidance; they are not measured results.
+- The Ponytail repository was not opened this session; ATLAS cites it only for the "simplest complete solution" idea already present in the project.
 
-No external skill was installed or executed as a plugin inside the running page. We do not claim otherwise.
+## Z.ai model and skill follow-up (2026-10-25)
 
-## 4. AI-slop research
-
-[Achref's style prompts](https://www.achref.dev/resources/style-prompts) enumerate **22** named aesthetic families. We kept the style taxonomy but wrote our own implementation briefs in `js/data.js`. The source uses audience/action, one visual idea, layout, type, palette, surfaces, motion, mobile and exclusions. ATLAS derives an original optional design brief with those roles.
-
-[40 Keywords](https://www.achref.dev/keywords.pdf) advises replacing broad adjectives with operational requirements. Our default UI rules include one primary action per view, 390px-first mobile adaptation, long-text wrapping, accessible focus, reduced-motion support and domain-specific copy. Exact colors and fonts should fit the actual client, not be fixed across all outputs.
-
-Signals of weak UI: repeated same-radius cards, decorative gradients and glows, anonymous typography, meaningless micro-labels, centered long copy, unrelated illustration, stock social proof, missing data and error states. Expert critique asks what each element does and removes anything that does not help. Usability acceptance tests matter more than a subjective score.
-
-## 5. Honest boundaries
-
-- Target selection changes the destination prompt format, **not** which provider answers it.
-- Local composer creates deterministic structure and can run without secrets. It is not a semantic AI model.
-- Optional authenticated AI rewrite uses a separately configured OpenAI Responses API model server-side.
-- Draft quality may differ by task and no cross-model prompt efficacy benchmark has been performed.
-- Live GitHub pushing, Vercel deployment, and Supabase data operations must be done in the user’s accounts; building project files does not equal deployment.
+See `docs/ZAI_RESEARCH.md` for model identity, capabilities, source links, prompt template rationale, and what remains unverified. The user-supplied AI Toolfinder URL could not be resolved using available retrieval methods. Its contents and licensing are **unverified**, so it has not been copied, installed or executed.

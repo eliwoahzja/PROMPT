@@ -1,40 +1,42 @@
+"""Browser smoke test. Serves the project over local HTTP, blocks external hosts, and checks layout + interaction."""
+import http.server, threading, functools, sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
-root=Path(__file__).resolve().parent.parent
-markup=(root/'index.html').read_text()
-css=(root/'styles.css').read_text()
-# Browser sandbox blocks all navigation; inline the ES module sources for an
-# interaction smoke check without using external network or production bundles.
-data=(root/'js/data.js').read_text().replace('export const ', 'const ')
-engine=(root/'js/engine.js').read_text().replace("import {targets, styles, aiGuardrails} from './data.js';",'').replace('export function ', 'function ').replace('export {targets, styles};','')
-main=(root/'js/main.js').read_text().replace("import {buildPrompt,metrics,targets,styles} from './engine.js';",'')
-script=data+'\n'+engine+'\n'+main
-soup=BeautifulSoup(markup,'html.parser')
-for tag in soup.find_all(['script','link']):
-    if tag.name=='script' or tag.get('rel')==['stylesheet'] or tag.get('rel')==['preconnect']:
-        tag.decompose()
-html=str(soup)
+root = Path(__file__).resolve().parent.parent
+handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
+handler.log_message = lambda *a, **k: None
+srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+base = f'http://127.0.0.1:{srv.server_address[1]}/'
+exe = next((p for p in ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'] if Path(p).exists()), None)
 with sync_playwright() as p:
-    browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
-    for w,h in [(320,720),(390,844),(768,1024),(1366,900)]:
-        page=browser.new_page(viewport={'width':w,'height':h},device_scale_factor=1)
-        page.set_content(html)
-        page.add_style_tag(content=css)
-        page.add_script_tag(content=script)
-        page.locator('#original-prompt').fill('Redesign a responsive website for a local bookstore. Keep existing navigation.')
-        page.locator('#style-select').select_option('editorial')
-        page.locator('#draft-button').click()
-        result=page.locator('#enhanced-prompt').input_value()
-        assert 'Redesign a responsive website' in result
-        assert 'Editorial Design' in result
-        assert 'WEB' not in result or True
-
-        measures=page.evaluate('''() => ({scroll:document.documentElement.scrollWidth,inner:innerWidth,body:document.body.scrollWidth})''')
-        print('CSS layout:',w,measures)
-        assert measures['scroll']<=w+1, f'horizontal overflow at {w}'
-        assert page.locator('#model-select option').count()==6
-        assert page.locator('#original-prompt').count()==1
-        if w in (390,1366):page.screenshot(path=str(root/f'qa_{w}_filled.png'),full_page=True)
+    browser = p.chromium.launch(headless=True, executable_path=exe, args=['--no-sandbox']) if exe else p.chromium.launch(headless=True, args=['--no-sandbox'])
+    for w, h in [(320, 720), (390, 844), (768, 1024), (1366, 900)]:
+        page = browser.new_page(viewport={'width': w, 'height': h})
+        errors = []
+        page.on('pageerror', lambda e: errors.append(str(e)))
+        page.route('**/*', lambda r: r.continue_() if r.request.url.startswith(base) else r.abort())
+        page.goto(base)
+        page.wait_for_selector('#targets .target')
+        assert page.locator('#targets input').count() == 9, 'expected 9 targets'
+        labels = page.locator('#targets strong').all_inner_texts()
+        assert 'Cursor' in labels and 'Lovable' in labels and 'Codex' in labels and 'Z.ai / GLM-5.3-Flash' in labels, labels
+        page.locator('#example-button').click()
+        page.locator('#detail-group [data-depth=thorough]').click()
+        page.locator('#enhance-button').click()
+        out = page.locator('#enhanced-prompt').input_value()
+        assert 'dog-grooming shop' in out and 'Neo-Brutalism' in out, 'draft missing request or style'
+        fails = page.locator('#receipt .badge[data-pass=false]').count()
+        passes = page.locator('#receipt .badge[data-pass=true]').count()
+        assert fails == 0 and passes >= 5, (fails, passes)
+        m = page.evaluate('() => ({scroll: document.documentElement.scrollWidth, inner: innerWidth})')
+        assert m['scroll'] <= w + 1, f'horizontal overflow at {w}: {m}'
+        small = page.evaluate('''() => [...document.querySelectorAll("button,select,.target,.seg,input[type=email]")]
+            .filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()).filter(r => r.height < 43).length''')
+        assert small == 0, f'{small} controls under 44px at {w}'
+        assert not errors, errors
+        print('ok', w, m, 'checks passed:', passes)
+        if w in (390, 1366): page.screenshot(path=str(root / f'qa_{w}.png'), full_page=True)
         page.close()
     browser.close()
+srv.shutdown()

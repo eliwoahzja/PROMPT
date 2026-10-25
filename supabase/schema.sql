@@ -7,10 +7,11 @@ create table if not exists public.prompts (
   title text not null check (char_length(title) between 1 and 100),
   raw_prompt text not null check (char_length(raw_prompt) between 1 and 12000),
   enhanced_prompt text not null check (char_length(enhanced_prompt) between 1 and 40000),
-  target text not null check (target in ('freebuff','chatgpt','kilo','codex','mimo','deepseek')),
+  target text not null check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai')),
   style text not null,
   depth text not null check (depth in ('compact','standard','thorough')),
   method text not null check (method in ('AI','DRAFT')),
+  hallmark boolean not null default false,
   created_at timestamptz not null default now()
 );
 create index if not exists prompts_user_created_idx on public.prompts(user_id,created_at desc);
@@ -27,6 +28,7 @@ create table if not exists public.user_settings (
   preferred_target text not null default 'chatgpt',
   preferred_style text not null default 'none',
   preferred_depth text not null default 'standard',
+  preferred_hallmark boolean not null default false,
   updated_at timestamptz not null default now()
 );
 alter table public.user_settings enable row level security;
@@ -65,3 +67,9 @@ end;
 $$;
 revoke all on function public.consume_enhancement_quota() from public, anon;
 grant execute on function public.consume_enhancement_quota() to authenticated;
+
+-- For a pre-existing ATLAS database that lacks the Z.ai target, run the migration in supabase/migrations/20261025_add_zai_target.sql.
+-- Earlier migration example (reference only): Run this once:
+-- alter table public.prompts drop constraint if exists prompts_target_check;
+-- alter table public.prompts add constraint prompts_target_check
+--   check (target in ('freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','deepseek','zai'));

@@ -1,21 +1,22 @@
-# Verification report
+# ATLAS v3 verification — Z.ai extension
 
-## PASSED
-- Six model/agent target templates present and wired to the selector.
-- Twenty-two original style prompts present and wired to the style selector.
-- Deterministic draft generation preserves user text in all 138 model/style combinations.
-- Seven engine tests and six server/API mock tests passed on Node.js.
-- JavaScript syntax checks passed for each shipped JS file.
-- Browser-rendered layout checked at 320, 390, 768 and 1366 CSS pixels: no horizontal document overflow.
-- Browser interaction smoke: target selector, style selector, text entry and local draft rendering worked in sandboxed Chromium with local scripts inlined.
-- The authenticated endpoint requires a bearer token, performs a Supabase token check, calls a per-user daily quota RPC, and parses the configured provider response under mocked test conditions.
-- Standalone HTML contains bundled CSS and local prompt engine; no provider key is embedded.
+Date: 2026-10-25
 
-## BLOCKED / UNVERIFIED
-- Supabase magic-link delivery and live database operations require the user's configured Supabase project.
-- Actual OpenAI Responses API requests require an API key and configured model. Only mocked responses were exercised here.
-- End-to-end Vercel deployment and GitHub publishing require access to the user's external accounts.
-- Cross-model prompt quality has not been empirically benchmarked; model style heuristics are evidence-informed, not guaranteed best possible.
+## PASSED — source and local integration checks
 
-## VISUAL DIRECTION
-Print-editorial workbench: ink typography, signal red as a single accent, sharp controls, clear output field and purposeful whitespace. No decorative gradient, repeated rounded cards or floating stock graphics.
+- `npm run check`: 21 tests passed; JavaScript parser checks passed for the app and API modules.
+- `buildResult()` generated prompts for **9 targets × 23 style options × 3 detail levels = 621** combinations; every case passed the structural receipt checks in the test suite.
+- Mocked authenticated `/api/enhance` calls accepted the new `zai` target and used the same verification/fallback behavior as other targets.
+- `supabase/schema.sql` accepts `zai` for fresh installations; `supabase/migrations/20261025_add_zai_target.sql` supports existing databases. SQL was inspected but **not executed on a live Supabase instance**.
+- Z.ai references are linked to the target and the research dialog. The target remains a destination prompt profile; it does not silently change the rewrite provider.
+
+## BLOCKED / NOT VERIFIED
+
+- Chromium browser smoke test: navigation was blocked with `net::ERR_BLOCKED_BY_ADMINISTRATOR` for local HTTP and file URLs; current-version viewport rendering could not be verified. The old screenshots from ATLAS v2 must not be presented as v3 visual validation.
+- Real GLM-5.3-Flash provider call: not performed. The Z.ai selector creates the copy-ready prompt, while the existing server rewrite endpoint still uses the configured OpenAI provider.
+- Live Supabase database migration, sign-in and history persistence: not performed because real credentials and deployment were unavailable.
+- User-provided AI Toolfinder redirect: unreachable. No skill installation or skill integration was performed.
+
+## Quality caveat
+
+Passing a structural prompt check does not prove that a downstream model produces a one-shot successful answer. External model behavior has not been benchmarked. All vendor-specific guidance is distinguished from general readability choices.
