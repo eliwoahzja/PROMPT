@@ -224,3 +224,15 @@ textarea::placeholder{color:var(--muted)}
 .audit-preview[hidden]{display:none}
 #audit-screenshot{max-width:100%;font-size:.875rem}
 #audit-visual-rating{border-left:4px solid var(--accent);padding-left:var(--s3);margin:var(--s3) 0}
+
+/* ---- combobox (replaces native selects) ---- */
+.combo{position:relative}
+.combo-input{width:100%;background:var(--surface);border:var(--line);border-radius:0;padding:var(--s3) calc(var(--s4) + 1.5rem) var(--s3) var(--s4);min-height:2.75rem;font:inherit;color:inherit;text-overflow:ellipsis}
+.combo::after{content:"";position:absolute;right:var(--s4);top:calc(1.375rem - 4px);width:7px;height:7px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg);pointer-events:none}
+.combo-list{position:absolute;z-index:30;left:0;right:0;top:100%;margin:0;padding:0;list-style:none;max-height:min(20rem,55vh);overflow-y:auto;background:var(--surface);border:var(--line);border-top:0}
+.combo-option{padding:var(--s3) var(--s4);min-height:2.75rem;display:flex;align-items:center;justify-content:space-between;gap:var(--s3);cursor:pointer}
+.combo-option[aria-selected=true]{font-weight:700}
+.combo-option.is-active{background:var(--ink);color:var(--surface)}
+.combo-group{padding:var(--s3) var(--s4) var(--s2);font-size:.8125rem;font-weight:700;opacity:.7}
+.combo-tag{font-size:.75rem;opacity:.7;white-space:nowrap}
+.combo-empty{padding:var(--s4);opacity:.8}

@@ -120,3 +120,11 @@ Attach an optional Markdown file through **Project context**, above the workspac
 ### Verification
 
 Run `npm run check` to validate JavaScript syntax and unit tests. See `qa/VALIDATION_v6.md` for performed tests and limitations. The recorded screenshots from `docs/screens/` are **static HTML/CSS layout previews**, not a real authenticated runtime/browser end-to-end test. The live Supabase/AI integration needs to be verified after deployment.
+
+## v7 changes
+- Selects are searchable comboboxes (`js/combobox.js`); the hidden native `<select>` stays the source of truth.
+- Slop Rater score is density-based (no longer saturates), skips tests/docs/markdown, rule definitions, negated mentions and CSS chevrons.
+- Local enhancer reads the task (fix, build, review, refactor, explain, write): intent-specific "Done when", "Limits you stated" from your own sentences, and "Resolve first" for what is missing. Local output is deterministic and instant by design; only the optional AI rewrite is a model call.
+- 8 new styles: Raw Web Brutalism, Organic Earth, Risograph Print, Data Instrument Panel (websites); Native iOS, Material 3, Dense Utility, Game HUD (apps). 22 original styles + 8 + "No style" = 31 entries.
+- v7.1: the local enhancer now rewrites the request (`js/rewrite.js`): fixes spelling and contractions, normalises tech-name casing, removes filler, turns "can you / I want you to" into direct instructions, splits run-ons. Links, files, quoted names, colours, numbers and sizes are locked and restored exactly; if anything would be lost it falls back to your original text and says so. The prompt header is now REQUEST (CLEANED).
+- v7.2: vocabulary expanded (`js/vocabulary.js`): 89 named-pattern entries (layout, type, colour, brand, motion, access, native app, prompt structure, engineering) on top of the 13 originals. Built on the "name it, don't describe it" principle of achref.dev/keywords.pdf; all wording is original. Negated phrases ("no gradients") are never turned into the opposite; web, app and code entries route to the right requests; detail level caps how many are added (4, 8, 14).

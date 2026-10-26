@@ -8,6 +8,8 @@ const decoder = new TextDecoder('utf-8', {fatal:false});
 const uiExt = /\.(html?|css|scss|sass|less|jsx?|tsx?|vue|svelte|astro|dart|swift|kt|xml|php|twig|liquid|hbs|ejs|pug)$/i;
 const interestingFile = /(?:^|\/)(?:index\.html|App\.(?:tsx|jsx|vue)|page\.(?:tsx|jsx)|styles?\.(?:css|scss)|activity_\w+\.xml|screen_\w+\.(?:kt|tsx)|theme\.(?:xml|ts|css)|MainActivity\.kt)$/i;
 const skipDirs = /(?:^|\/)(?:node_modules|vendor|dist|build|\.next|\.git|coverage|Pods|\.gradle|\.venv|out|target|\.dart_tool|\.idea)(?:\/|$)/i;
+const skipNonUI = /(?:^|\/)(?:tests?|__tests__|docs?|qa|spec)(?:\/|$)|\.(?:test|spec)\.[a-z]+$|\.md$/i;
+const ruleDefinition = /(?:pattern|re)\s*:\s*\/|new RegExp\(|\.test\(|\.match\(/;
 const skipSecrets = /(?:^|\/)(?:\.env(?:\..+)?|id_rsa|google-services\.json|credentials(?:\..+)?|key(?:store)?\.(?:jks|p12|pem)|secret[^/]*)$/i;
 function u16(d,o){return d.getUint16(o,true);}
 function u32(d,o){return d.getUint32(o,true);}
@@ -79,7 +81,7 @@ function isUI(name){
   return uiExt.test(name)||/\.(?:css|scss|sass|less)$/i.test(name);
 }
 function cleanExcerpt(text){return text.replace(/((?:api[_-]?key|password|secret|token)\s*[:=]\s*)['"][^'"\n]+['"]/gi,'$1[REDACTED]').replace(/https?:\/\/[^\s"']+[?][^\s"']+/g,'[URL with query redacted]').slice(0,160);}
-function selectedFiles(entries){return entries.filter(e=>isUI(e.name)&&!skipDirs.test(e.name)&&!skipSecrets.test(e.name)&&e.uncompressed<=MAX_SOURCE_BYTES).sort((a,b)=>Number(interestingFile.test(b.name))-Number(interestingFile.test(a.name))||a.uncompressed-b.uncompressed).slice(0,MAX_SOURCE_FILES);}
+function selectedFiles(entries){return entries.filter(e=>isUI(e.name)&&!skipDirs.test(e.name)&&!skipNonUI.test(e.name)&&!skipSecrets.test(e.name)&&e.uncompressed<=MAX_SOURCE_BYTES).sort((a,b)=>Number(interestingFile.test(b.name))-Number(interestingFile.test(a.name))||a.uncompressed-b.uncompressed).slice(0,MAX_SOURCE_FILES);}
 export async function inspectZip(file,{onProgress=()=>{}}={}){
   const entries=await readZipEntries(file);
   const pick=selectedFiles(entries);
@@ -93,7 +95,7 @@ export async function inspectZip(file,{onProgress=()=>{}}={}){
   return rateSources({fileName:file.name,zipBytes:file.size,entries,sources});
 }
 export function rateSources({fileName='project.zip',zipBytes=0,entries=[],sources=[]}){
-  const uiFiles=entries.filter(e=>isUI(e.name)&&!skipDirs.test(e.name));
+  const uiFiles=entries.filter(e=>isUI(e.name)&&!skipDirs.test(e.name)&&!skipNonUI.test(e.name));
   const images=entries.filter(e=>/\.(?:png|jpg|jpeg|webp|gif|svg)$/i.test(e.name)&&!skipDirs.test(e.name));
   const findings=[];
   for(const rule of RULES){
@@ -103,6 +105,8 @@ export function rateSources({fileName='project.zip',zipBytes=0,entries=[],source
       while((match=rule.pattern.exec(text))!==null && hits<16){
         const before=text.slice(0,match.index);
         const line=before.split('\n').length;
+        const lineText=text.split('\n')[line-1]||'';
+        if(ruleDefinition.test(lineText)||/\b(?:no|never|avoid|without|don'?t|do not|ban(?:ned)?)\b[^\n]{0,48}$/i.test(lineText.slice(0,match[0].length+match.index-before.lastIndexOf('\n')-1))||(rule.id==='decorative-gradient'&&/transparent 50%/.test(lineText)))continue;
         refs.push({file:path,line,excerpt:cleanExcerpt(text.split('\n')[line-1]?.trim()||match[0])});
         hits++;
         if(refs.length>=3)break;
@@ -122,7 +126,10 @@ export function rateSources({fileName='project.zip',zipBytes=0,entries=[],source
   const byArea={};for(const f of findings)byArea[f.area]=(byArea[f.area]||0)+Math.min(24,f.severity*5+Math.min(f.hits,4)*2);
   const areas=['Visual identity','Composition','Typography','Writing','Interaction','Accessibility','Motion','Integrity'];
   const ratings=areas.map(name=>({name,risk:Math.min(100,byArea[name]||0),status:findings.some(f=>f.area===name)?'flagged':'not flagged in scanned source'}));
-  const risk=sources.length?Math.min(100,Math.round(findings.reduce((sum,f)=>sum+f.severity*5+Math.min(f.hits,4)*2,0) / Math.max(.65,Math.min(1.4,sources.length/8)))):null;
+  // Each finding adds weight by severity and by how widespread it is across scanned files; the sum saturates smoothly,
+  // so a few isolated hits stay low and many distinct, widespread patterns approach (but rarely reach) 100.
+  const weight=findings.reduce((sum,f)=>sum+f.severity*4*(1-Math.exp(-(f.hits/Math.max(1,sources.length))*3)),0);
+  const risk=sources.length?Math.min(100,Math.round(100*(1-Math.exp(-weight/28)))):null;
   const fileCoverage=uiFiles.length?Math.round((sources.length/uiFiles.length)*100):0;
   return {fileName,zipBytes,entryCount:entries.length,uiFileCount:uiFiles.length,scannedCount:sources.length,fileCoverage,
     imageCount:images.length,screenshotCandidates:images.filter(e=>/(?:screenshot|preview|screen[-_]?shot|capture)/i.test(e.name)).slice(0,8).map(e=>e.name),

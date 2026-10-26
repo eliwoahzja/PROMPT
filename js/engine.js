@@ -1,4 +1,6 @@
 import {contextBrief} from './work-context.js';
+import {rewriteRequest} from './rewrite.js';
+import {vocabulary} from './vocabulary.js';
 import {targets, styles, aiGuardrails, hallmarkReview, sharpeners, CHECKED_ON} from './data.js';
 
 export const MAX_INPUT = 12000;
@@ -37,8 +39,55 @@ export function detectNamedStyle(raw) {
   return null;
 }
 
-export function sharpen(raw) {
-  return sharpeners.filter(s=>s.re.test(raw)).map(s=>({from:s.from,to:s.to}));
+const NEGATED=/\b(?:no|not|never|without|avoid|don'?t|do not|skip|remove|ban(?:ned)?)\b[^.\n;,]{0,30}$/i;
+const appWords=/\b(?:app|ios|android|flutter|swiftui|kotlin|react native|jetpack|screen)\b/i;
+/** Turn vague phrases into named, checkable instructions (js/data.js sharpeners plus js/vocabulary.js).
+ *  A phrase the user negated ("no gradients") is never "sharpened" into the opposite. */
+export function sharpen(raw,{design=true,app=false,limit=8}={}){
+  const seen=new Set(), out=[], webWords=/\b(?:website|web ?app|web ?site|landing|site|browser|html|css)\b/i.test(raw);
+  const all=[...sharpeners.map(s=>({...s,kind:'design',area:'Design'})),...vocabulary];
+  for(const s of all){
+    if((s.kind==='design'||s.kind==='web'||s.kind==='app')&&!design)continue;
+    if(s.kind==='app'&&!app)continue;
+    if(s.kind==='web'&&app&&!webWords)continue;
+    const m=new RegExp(s.re.source,s.re.flags.replace('g','')).exec(raw);
+    if(!m||NEGATED.test(raw.slice(Math.max(0,m.index-40),m.index))||seen.has(s.from))continue;
+    seen.add(s.from);out.push({from:s.from,to:s.to,area:s.area});
+  }
+  return out.slice(0,limit);
+}
+
+
+const INTENTS=[
+  ['fix',/\b(fix|bug|broken|not working|doesn'?t work|error|crash(?:es|ing)?|fails?|failing|regression|stuck)\b/i],
+  ['refactor',/\b(refactor|clean ?up|restructure|migrate|port|rewrite)\b/i],
+  ['review',/\b(review|audit|critique|rate|analy[sz]e|inspect|check whether)\b/i],
+  ['explain',/\b(explain|why does|how does|what is|teach|summari[sz]e)\b/i],
+  ['write',/\b(write|draft|compose|email|blog|article|caption|copy for)\b/i],
+  ['build',/\b(build|create|make|develop|generate|design|add|implement|set up|turn .+ into)\b/i]
+];
+const DONE={
+  fix:['The reported symptom is reproduced before the change and gone after it.','The root cause is named, not just hidden.','Nearby behaviour still works; name the check that shows it.'],
+  refactor:['Behaviour is unchanged: existing tests give the same results before and after.','Public names, routes and data formats are preserved unless the request says otherwise.','The diff touches only what the request names.'],
+  review:['Each finding cites a file and line, or quotes the excerpt.','Findings are ordered by severity and marked confirmed or suspected.','Nothing is changed unless the request asks for changes.'],
+  explain:['The answer to the actual question comes first, then the support.','Anything uncertain is marked as uncertain.'],
+  write:['The tone and audience match what the request states or implies.','No invented facts, quotes or statistics.'],
+  build:['Every requirement can be demonstrated, not just claimed.','Empty, loading and error states are handled.','Assumptions are listed.']
+};
+/** Read the request itself: what kind of task it is, which limits the user stated, and what is still unknown. */
+export function analyzeTask(raw){
+  const task=String(raw||'').trim();
+  const intent=(INTENTS.find(([,re])=>re.test(task))||['general'])[0];
+  const words=task.split(/\s+/).filter(Boolean).length;
+  const constraints=task.split(/(?<=[.!?\n])\s+/).map(x=>x.trim()).filter(x=>x.length>6&&/\b(must|never|don'?t|do not|only|without|at least|at most|exactly|keep|preserve|no more than|should not|avoid)\b/i.test(x)).map(x=>x.slice(0,180)).slice(0,6);
+  const has=re=>re.test(task), ui=uiPattern.test(task), gaps=[];
+  if(intent==='fix'&&!has(/\b(error|exception|stack|log|screenshot|steps|expected|instead|when i|happens when)\b/i))gaps.push('What exactly happens, and what should happen instead? Paste the error text or the steps to reproduce it.');
+  if(intent==='build'&&!has(/\b(for|users?|audience|customers?|students?|team|developers?|visitors?)\b/i))gaps.push('Who is it for?');
+  if(intent==='build'&&ui&&!has(/\b(mobile|desktop|responsive|ios|android|web|tablet|phone)\b/i))gaps.push('Which platform and screen sizes must it work on?');
+  if(intent==='build'&&!TECH.some(t=>new RegExp('(?<![\\w.])'+escapeRe(t)+'(?![\\w])','i').test(task)))gaps.push('Which stack should it use, or may the agent choose?');
+  if(intent==='review'&&!has(/\b(file|repo|zip|code|url|attached|diff|pr|pull request)\b/i))gaps.push('Which files, repository or URL should be reviewed?');
+  if(words<12)gaps.push('Describe the result you want to see when this is finished.');
+  return {intent,words,constraints,gaps};
 }
 
 function numbered(lines){ return lines.map((l,i)=>(i+1)+'. '+l).join('\n'); }
@@ -66,13 +115,19 @@ export function buildResult({raw, target='chatgpt', style='none', depth='standar
   const isDesign = chosen.id !== 'none' || uiPattern.test(task);
   const isCoding = model.kind === 'agent' || model.kind === 'builder' || codingPattern.test(task);
   const tokens = extractTokens(task);
-  const sharpened = isDesign ? sharpen(task) : [];
+  const rewrite = rewriteRequest(task);
+  const isApp = chosen.group === 'Apps' || appWords.test(task);
+  const sharpened = sharpen(rewrite.text, {design:isDesign, app:isApp, limit:depth==='compact'?4:depth==='thorough'?14:8});
+  const analysis = analyzeTask(rewrite.text.replace(/^- /gm,''));
   const S = []; // {key,title,body}
 
-  S.push({key:'request',title:'Request (verbatim)',body:task});
+  S.push({key:'request',title:'Request (cleaned)',body:rewrite.text});
   if(context) S.push({key:'workcontext',title:'Work context',body:contextBrief(context)});
   if (tokens.length) S.push({key:'keep',title:'Keep exactly as written',body:tokens.join(', ')});
   if (sharpened.length) S.push({key:'specifics',title:'Vague phrases made specific',body:bullets(sharpened.map(s=>'\u201c'+s.from+'\u201d \u2192 '+s.to))});
+
+  if (analysis.constraints.length) S.push({key:'constraints',title:'Limits you stated',body:bullets(analysis.constraints)});
+  if (analysis.gaps.length && depth !== 'compact') S.push({key:'gaps',title:'Resolve first',body:'These are not in your request. Ask about them, or state the assumption you make:\n'+bullets(analysis.gaps)});
 
   const how = depth === 'compact' ? model.how.slice(0,2) : model.how;
   S.push({key:'how',title:'How to work',body:model.layout==='numbered'?numbered(how):bullets(how)});
@@ -81,9 +136,8 @@ export function buildResult({raw, target='chatgpt', style='none', depth='standar
     S.push({key:'scope',title:'Scope',body:bullets([
       'Do only what the request asks. Add no extra features, files, sections or styling.',
       'Keep every name, number, technology and exclusion from the request.'])});
-    S.push({key:'done',title:'Done when',body:bullets(isCoding
-      ? ['Every requirement in the request is met.','Behavior outside the request still works.','A check you actually ran passes, or you state which check could not be run.']
-      : ['Every requirement in the request is met.','The output is in the requested format.','Assumptions are listed, not hidden.'])});
+    const doneBase = DONE[analysis.intent] || ['Every requirement in the request is met.','The output is in the requested format.','Assumptions are listed, not hidden.'];
+    S.push({key:'done',title:'Done when',body:bullets(isCoding && analysis.intent!=='explain' && analysis.intent!=='write' ? doneBase.concat(['A check you actually ran passes, or you state which check could not be run.']) : doneBase)});
   }
   if (isDesign) {
     const guard = depth === 'thorough' ? aiGuardrails : aiGuardrails.split('\n').filter(l=>!l.startsWith('Before writing code')).slice(0,14).join('\n');
@@ -114,11 +168,14 @@ export function buildResult({raw, target='chatgpt', style='none', depth='standar
   if (named && chosen.id === 'none') warnings.push('Your request mentions '+styles.find(s=>s.id===named).name+'. Pick it under Visual direction to add the full brief.');
   if (named && chosen.id !== 'none' && named !== chosen.id) warnings.push('Your request mentions '+styles.find(s=>s.id===named).name+' but you picked '+chosen.name+'. The prompt keeps both; edit one so they do not conflict.');
   if (model.id === 'codex' && depth === 'thorough') warnings.push('OpenAI\u2019s Codex guide recommends a minimal prompt. Detailed adds sections it says you usually do not need; use Concise unless the task is risky.');
-  const words = task.split(/\s+/).filter(Boolean).length;
+  const words = analysis.words;
+  if (rewrite.fallback) warnings.unshift('The request could not be cleaned safely'+(rewrite.lost.length?' (it would have lost: '+rewrite.lost.join(', ')+')':'')+', so it is included as you wrote it.');
+  else if (rewrite.changes.length) warnings.unshift('Rewrote your request: '+rewrite.changes.slice(0,4).map(c=>c.kind==='filler'?'removed filler':'\u201c'+c.from+'\u201d \u2192 \u201c'+c.to+'\u201d').join('; ')+(rewrite.changes.length>4?'; and '+(rewrite.changes.length-4)+' more.':'.'));
+  if (analysis.gaps.length) warnings.unshift('Read as a '+analysis.intent+' task. '+analysis.gaps.length+' gap'+(analysis.gaps.length>1?'s':'')+' flagged under Resolve first.');
   if (words < 8) warnings.push('Your request is only '+words+' words. The prompt can add structure, but only you can add the audience, the outcome and the limits.');
 
   const checks = verifyPrompt(task, prompt, {target, style, depth, mode:'draft', hallmark, context});
-  return {prompt, checks, tokens, sharpened, warnings, isDesign, isCoding, hallmarkApplied:hallmark && isDesign};
+  return {prompt, checks, tokens, sharpened, warnings, analysis, rewrite, isDesign, isCoding, hallmarkApplied:hallmark && isDesign};
 }
 
 export function buildPrompt(opts) { return buildResult(opts).prompt; }
@@ -126,7 +183,7 @@ export function buildPrompt(opts) { return buildResult(opts).prompt; }
 /**
  * Real checks on a finished prompt. Nothing here predicts how a model will answer;
  * it only proves what the text contains.
- * mode 'draft': the local composer (verbatim request included).
+ * mode 'draft': the local composer (cleaned request included; exact strings kept).
  * mode 'AI': a model rewrote it, so required strings are checked individually.
  */
 export function verifyPrompt(raw, out, {target='chatgpt', style='none', depth='standard', mode='draft', hallmark=false, context=''} = {}) {
@@ -137,12 +194,12 @@ export function verifyPrompt(raw, out, {target='chatgpt', style='none', depth='s
   const tokens = extractTokens(task);
   const missing = tokens.filter(t=>!text.toLowerCase().includes(t.toLowerCase()));
   const checks = [];
-  if (mode === 'draft') checks.push({id:'verbatim',label:'Your request appears word for word',pass:text.includes(task)});
+  if (mode === 'draft') {const rw=rewriteRequest(task);checks.push({id:'verbatim',label:rw.fallback?'Your request is included as written':'Your cleaned-up request is included',pass:text.includes(rw.text)});}
   checks.push({id:'tokens',label:tokens.length ? 'All '+tokens.length+' exact names, numbers and links are kept' : 'No exact names or numbers needed protecting',pass:missing.length===0,detail:missing.length?'Missing: '+missing.join(', '):''});
   if (mode === 'draft' && model) {
     const ok = model.layout==='xml' ? /<request>[\s\S]*<\/request>/.test(text)
       : model.layout==='numbered' ? /(^|\n)1\. /.test(text)
-      : /(^|\n)REQUEST \(VERBATIM\)\n/.test(text);
+      : /(^|\n)REQUEST \(CLEANED\)\n/.test(text);
     checks.push({id:'layout',label:'Structure matches the '+model.label+' template',pass:ok});
   }
   if(context){

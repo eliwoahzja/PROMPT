@@ -1,3 +1,4 @@
+import {enhanceSelect} from './combobox.js';
 import {mountAudit} from './audit-ui.js';
 import {readWorkContext} from './work-context.js';
 import {buildResult,allPassed,metrics,targets,styles,CHECKED_ON} from './engine.js';
@@ -58,7 +59,14 @@ for(const section of sections){
 }
 if(targetSelect.querySelectorAll('option').length!==targets.length)throw new Error('A target is missing from the selector.');
 targetSelect.value=target;
-for(const s of styles.filter(x=>x.id!=='none')) styleSelect.append(el('option',{value:s.id,text:s.name}));
+for(const grp of ['Websites and apps','Websites','Apps']){
+  const g=el('optgroup',{label:grp});
+  for(const s of styles.filter(x=>x.id!=='none'&&(x.group||'Websites and apps')===grp))g.append(el('option',{value:s.id,text:s.name,'data-keywords':s.suitable}));
+  styleSelect.append(g);
+}
+for(const o of targetSelect.querySelectorAll('option')){const t=modelById(o.value);if(t)o.dataset.keywords=[t.id,t.kind,t.note].filter(Boolean).join(' ');}
+targetSelect.dataset.placeholder='Search platforms and models';styleSelect.dataset.placeholder='Search styles, e.g. iOS, dashboard, print';
+for(const sel of [targetSelect,styleSelect,$('audit-ai-used')])if(sel)enhanceSelect(sel);
 $('checked-on').textContent=CHECKED_ON;
 
 function renderTargetNote(){

@@ -4,12 +4,12 @@ import {buildResult,buildPrompt,verifyPrompt,extractTokens,allPassed,styles,targ
 
 const DEPTHS=['compact','standard','thorough'];
 
-test('15 targets including six verified model-specific additions and 22 styles plus none',()=>{
+test('15 targets including six verified model-specific additions and 30 styles plus none',()=>{
   assert.deepEqual(targets.map(t=>t.id),['freebuff','chatgpt','kilo','codex','cursor','lovable','mimo','zai','deepseek','gpt6-chat','gpt6-astra','gpt6-1-sol','gpt6-sol','gpt6-luna','deepseek-v4-1-flash-1017']);
   assert.equal(targets.length,15);
-  assert.equal(styles.length,23);
+  assert.equal(styles.length,31);
   assert.ok(targets.find(t=>t.id==='zai').sources.some(x=>x.url.includes('docs.z.ai')));
-  assert.equal(new Set(styles.map(s=>s.id)).size,23);
+  assert.equal(new Set(styles.map(s=>s.id)).size,31);
 });
 test('every target states its evidence level and has at least one source link',()=>{
   for(const t of targets){
@@ -23,7 +23,7 @@ test('every target x style x depth compiles and passes all of its own checks',()
   for(const t of targets)for(const s of styles)for(const d of DEPTHS){
     const r=buildResult({raw,target:t.id,style:s.id,depth:d});
     assert.ok(allPassed(r.checks),t.id+'/'+s.id+'/'+d+' '+JSON.stringify(r.checks.filter(c=>!c.pass)));
-    assert.ok(r.prompt.includes(raw));
+    assert.ok(r.prompt.includes(r.rewrite.text)&&r.rewrite.text.includes('"Library.jsx"')&&r.rewrite.text.includes('https://example.com/spec'));
     if(s.id!=='none')assert.ok(r.prompt.includes(s.name));
   }
 });
@@ -59,7 +59,7 @@ test('layouts differ by target: xml tags, numbered list, plain headings',()=>{
   assert.match(buildPrompt({raw:'Explain DNS clearly please',target:'chatgpt'}),/<request>/);
   assert.match(buildPrompt({raw:'Explain DNS clearly please',target:'mimo'}),/\n1\. /);
   assert.match(buildPrompt({raw:'Explain DNS clearly please',target:'zai'}),/\n1\. /);
-  assert.match(buildPrompt({raw:'Explain DNS clearly please',target:'deepseek'}),/^REQUEST \(VERBATIM\)/);
+  assert.match(buildPrompt({raw:'Explain DNS clearly please',target:'deepseek'}),/^REQUEST \(CLEANED\)/);
 });
 test('detail levels grow and only detailed adds the self-check',()=>{
   const c=buildPrompt({raw:'Fix my login route',target:'kilo',depth:'compact'});
